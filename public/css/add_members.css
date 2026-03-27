@@ -791,3 +791,99 @@
     padding: 14px;
   }
 }
+
+/* ============================================================
+   UX Refinement Patch (non-breaking)
+=================================================== */
+
+/* 1) Softer no-results state (not critical alert) */
+#not-found {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+  color: #B91C1C;
+  text-align: center;
+  padding: 20px;
+  border-radius: 16px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+#not-found p {
+  color: #B91C1C;
+  margin: 0;
+}
+
+/* 5) Error icon alignment */
+#not-found i,
+#not-found svg {
+  margin-bottom: 10px;
+}
+
+/* 2 & 3) Button hierarchy: Search secondary, Done primary */
+.search-btn {
+  background: #ffffff;
+  border: 1px solid #5B4CFA;
+  color: #5B4CFA;
+  box-shadow: 0 6px 14px rgba(91, 76, 250, 0.12);
+}
+
+.search-btn:hover {
+  background: #5B4CFA;
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(91, 76, 250, 0.2);
+}
+
+.done-btn {
+  background: linear-gradient(135deg, #5B4CFA, #8B7CFF);
+  color: #ffffff;
+  box-shadow: 0 10px 25px rgba(91, 76, 250, 0.3);
+}
+
+/* 4) Prevent content overlap with fixed done bar */
+.page-body,
+.container {
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+}
+
+#member-list {
+  padding-bottom: 100px;
+}
+
+/* 6) Vertical spacing consistency */
+.section,
+.search-wrap,
+#search-result,
+#not-found,
+.divider,
+.members-header,
+#member-list,
+#empty-state {
+  margin-top: 20px;
+}
+
+/* 7) Micro interactions */
+.search-btn,
+.done-btn,
+.add-btn,
+.remove-btn,
+.back-btn {
+  transition: all 0.2s ease;
+}
+
+.search-btn:hover,
+.done-btn:hover,
+.add-btn:hover,
+.remove-btn:hover,
+.back-btn:hover {
+  transform: translateY(-2px);
+}
+
+.search-btn:active,
+.done-btn:active,
+.add-btn:active,
+.remove-btn:active,
+.back-btn:active {
+  transform: scale(0.96);
+}
