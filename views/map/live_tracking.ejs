@@ -11,11 +11,18 @@
   const rideData  = <%- JSON.stringify(data) %>;
   const userid    = "<%= curruser._id %>";
 </script>
- 
+ <body>
 <!-- NAVBAR -->
+<%
+  const joinedMembersCount = Array.isArray(members) ? members.length : 0;
+  const totalMembersCount = Math.max(joinedMembersCount, Number(data.totalMembers) || joinedMembersCount);
+%>
 <nav class="app-nav">
   <button class="icon-btn" onclick="history.back()"><i class="bi bi-arrow-left"></i></button>
-  <h1><%= data.ridename %></h1>
+  <div class="app-nav-title">
+    <h1><%= data.ridename %></h1>
+    <p class="app-nav-sub"><i class="bi bi-people-fill"></i> <%= joinedMembersCount %>/<%= totalMembersCount %> joined</p>
+  </div>
   <button class="icon-btn"><i class="bi bi-share"></i></button>
 </nav>
 
@@ -202,3 +209,4 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/map_page.js"></script>
 <script src="/js/socket.js"></script>
+</body>
