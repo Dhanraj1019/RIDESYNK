@@ -1,0 +1,178 @@
+/* ═══════════════════════════════════════════════════════════════
+   socket.js
+   – Single socket.io connection  (relative URL — works any host/port)
+   – Handles: joinRide, live GPS location + heading, chat
+   – Calls window.updateUserMarker / window.removeUser (from map_page.js)
+   ═══════════════════════════════════════════════════════════════ */
+
+const socket = io();   // relative URL — no hardcoded localhost
+const ride_id = rideData._id;
+
+// ── Helpers ──────────────────────────────────────────────────────────
+function getSenderId(sender) {
+  if (!sender) return '';
+  if (typeof sender === 'string') return sender;
+  return sender._id || '';
+}
+function getSenderInitial(sender) {
+  if (!sender || typeof sender === 'string') return '?';
+  return (sender.firstname || '?')[0].toUpperCase();
+}
+
+// ── Connect: join ride room + start GPS ──────────────────────────────
+socket.on('connect', () => {
+  console.log('Socket connected:', socket.id);
+  socket.emit('joinRide', ride_id);
+  startLiveLocation();
+});
+socket.on('disconnect', () => console.log('Socket disconnected'));
+
+// ── GPS tracking ─────────────────────────────────────────────────────
+let watchId = null;
+
+function startLiveLocation() {
+  if (!navigator.geolocation) { console.warn('Geolocation not supported'); return; }
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      // Device compass heading (null if unavailable — map_page.js handles it)
+      const heading = pos.coords.heading;
+      const speed = pos.coords.speed;
+
+      // Broadcast to other riders in this room
+      socket.emit('sendLocation', { rideId: ride_id, userId: userid, lat, lng, heading, speed });
+
+      // Render my own vehicle marker on my own map
+      if (typeof window.updateUserMarker === 'function') {
+        window.updateUserMarker(userid, lat, lng, heading, speed);
+      }
+    },
+    (err) => console.warn('GPS error:', err),
+    { enableHighAccuracy: true, maximumAge: 5000 }
+  );
+}
+
+// ── Receive other riders' locations ──────────────────────────────────
+socket.on('receiveLocation', ({ userId, lat, lng, heading, speed }) => {
+  if (String(userId) === String(userid)) return; // skip own echo
+  if (typeof window.updateUserMarker === 'function') {
+    window.updateUserMarker(userId, lat, lng, heading, speed);
+  }
+});
+
+// ── Rider left ────────────────────────────────────────────────────────
+socket.on('userLeft', ({ userId }) => {
+  if (typeof window.removeUser === 'function') window.removeUser(userId);
+});
+
+// ── Cleanup ───────────────────────────────────────────────────────────
+window.addEventListener('beforeunload', () => {
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  socket.disconnect();
+});
+
+/* ════════════════════════════════════════════════
+   CHAT  (no changes)
+   ════════════════════════════════════════════════ */
+
+function scrollToBottom() {
+  const chatBox = document.getElementById('chatMessages');
+  if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const message = input.value.trim();
+  if (!message) return;
+  input.value = '';
+  if (sendBtn) {
+    sendBtn.classList.remove('send-burst');
+    void sendBtn.offsetWidth;
+    sendBtn.classList.add('send-burst');
+  }
+  socket.emit('sendMessage', { rideId: ride_id, senderId: userid, message });
+}
+
+socket.on('receiveMessage', (msg) => {
+  const chatTabBtn = document.querySelector('[data-tab="chat"]');
+  if (chatTabBtn && !chatTabBtn.classList.contains('active')) chatTabBtn.click();
+  if (typeof window.snapTo === 'function') {
+    const sheetBody = document.getElementById('sheetBody');
+    if (sheetBody && sheetBody.style.display === 'none') window.snapTo('mid');
+  }
+  showMessage(msg);
+});
+
+function showMessage(msg) {
+  const chatBox = document.getElementById('chatMessages');
+  if (!chatBox) return;
+
+  const isMe = getSenderId(msg.senderId).toString() === userid.toString();
+  const container = document.createElement('div');
+  container.className = `msg-container ${isMe ? 'me' : 'them'} msg-enter`;
+
+  const last = chatBox.lastElementChild;
+  if (last && last.classList.contains(isMe ? 'me' : 'them')) {
+    container.classList.add('continued');
+  }
+
+  if (!isMe) {
+    const av = document.createElement('div');
+    av.className = 'msg-av av-bg-1';
+    av.innerText = getSenderInitial(msg.senderId);
+    container.appendChild(av);
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = isMe ? 'msg-bubble bubble-me' : 'msg-bubble bubble-them';
+
+  if (!isMe && msg.senderId && msg.senderId.firstname) {
+    const sender = document.createElement('div');
+    sender.className = 'msg-sender';
+    sender.innerText = msg.senderId.firstname;
+    bubble.appendChild(sender);
+  }
+
+  const textNode = document.createElement('p');
+  textNode.className = 'msg-text';
+  textNode.innerText = msg.message;
+  bubble.appendChild(textNode);
+
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+
+  const timeNode = document.createElement('span');
+  timeNode.className = 'msg-time';
+  const rawTime = msg.time ?? msg.createdAt ?? msg.timestamp ?? Date.now();
+  timeNode.innerText = new Date(rawTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  meta.appendChild(timeNode);
+
+  if (isMe) {
+    const ticks = document.createElement('i');
+    ticks.className = 'bi bi-check-all ms-1 msg-ticks';
+    meta.appendChild(ticks);
+  }
+
+  bubble.appendChild(meta);
+  container.appendChild(bubble);
+  chatBox.appendChild(container);
+
+  scrollToBottom();
+}
+
+window.addEventListener('load', () => {
+  scrollToBottom();
+
+  const chatInput = document.getElementById('chatInput');
+  if (!chatInput) return;
+
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    sendMessage();
+  });
+});

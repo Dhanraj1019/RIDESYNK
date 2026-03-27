@@ -1,0 +1,325 @@
+<% layout("/layout/boilerplate.ejs") %>
+  
+<body>
+ 
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <button class="back-btn"><i class="bi bi-arrow-left"></i></button>
+    <h1>Settings</h1>
+  </div>
+  
+  <div class="page">
+  
+    <!-- PROFILE CARD -->
+    <a class="profile-card" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+      <div class="avatar">
+        <%= data.firstname && data.lastname ? data.firstname.charAt(0).toUpperCase() + data.lastname.charAt(0).toUpperCase() : data.username.charAt(0).toUpperCase() %>
+      </div>
+      <div class="profile-info">
+        <p class="profile-name">
+          <%= data.firstname && data.lastname ? data.firstname + " " + data.lastname : data.username %>
+        </p>
+        <div class="profile-meta">
+          <span class="badge-admin">Admin</span>
+          <%= data.email %>
+        </div>
+      </div>
+      <i class="bi bi-chevron-right chevron"></i>
+    </a>
+  
+    <!-- ACCOUNT SECTION -->
+    <p class="section-label">Account</p>
+    <div class="menu-group">
+  
+      <button class="menu-item" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+        <span class="item-icon icon-blue"><i class="bi bi-person-fill"></i></span>
+        <div class="item-body">
+          <p class="item-title">Edit Profile</p>
+          <p class="item-sub">Name, photo, phone number</p>
+        </div>
+        <span class="item-end"><i class="bi bi-chevron-right"></i></span>
+      </button>
+  
+      <button class="menu-item" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+        <span class="item-icon icon-purple"><i class="bi bi-shield-lock-fill"></i></span>
+        <div class="item-body">
+          <p class="item-title">Change Password</p>
+          <p class="item-sub">Update your security password</p>
+        </div>
+        <span class="item-end"><i class="bi bi-chevron-right"></i></span>
+      </button>
+  
+      <button class="menu-item" data-bs-toggle="modal" data-bs-target="#paymentModal">
+        <span class="item-icon icon-green"><i class="bi bi-credit-card-2-front-fill"></i></span>
+        <div class="item-body">
+          <p class="item-title">Payment Methods</p>
+          <p class="item-sub">Cards, UPI, wallets</p>
+        </div>
+        <span class="item-end"><span style="font-size:.75rem;color:var(--muted)">Visa ••4242</span> <i class="bi bi-chevron-right"></i></span>
+      </button>
+  
+    </div>
+  
+    <!-- PREFERENCES SECTION -->
+    <p class="section-label">Preferences</p>
+    <div class="menu-group">
+  
+      <div class="menu-item">
+        <span class="item-icon icon-orange"><i class="bi bi-bell-fill"></i></span>
+        <div class="item-body">
+          <p class="item-title">Push Notifications</p>
+          <p class="item-sub">Ride updates &amp; offers</p>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" id="notifToggle" checked>
+        </div>
+      </div>
+  
+      <div class="menu-item">
+        <span class="item-icon icon-slate"><i class="bi bi-moon-stars-fill"></i></span>
+        <div class="item-body">
+          <p class="item-title">Dark Mode</p>
+          <p class="item-sub">Switch app appearance</p>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" id="darkToggle">
+        </div>
+      </div>
+  
+      <button class="menu-item" data-bs-toggle="modal" data-bs-target="#languageModal">
+        <span class="item-icon icon-teal"><i class="bi bi-translate"></i></span>
+        <div class="item-body">
+          <p class="item-title">Language</p>
+          <p class="item-sub">App display language</p>
+        </div>
+        <span class="item-end"><span style="font-size:.75rem;color:var(--muted)">English</span> <i class="bi bi-chevron-right"></i></span>
+      </button>
+  
+    </div>
+  
+    <!-- SUPPORT SECTION -->
+    <p class="section-label">Support</p>
+    <div class="menu-group">
+  
+      <button class="menu-item">
+        <span class="item-icon icon-pink"><i class="bi bi-headset"></i></span>
+        <div class="item-body">
+          <p class="item-title">Help &amp; Support</p>
+          <p class="item-sub">FAQs, chat with us</p>
+        </div>
+        <span class="item-end"><i class="bi bi-chevron-right"></i></span>
+      </button>
+  
+      <button class="menu-item">
+        <span class="item-icon icon-blue"><i class="bi bi-file-earmark-text-fill"></i></span>
+        <div class="item-body">
+          <p class="item-title">Terms &amp; Privacy</p>
+          <p class="item-sub">Legal policies</p>
+        </div>
+        <span class="item-end"><i class="bi bi-chevron-right"></i></span>
+      </button>
+  
+      <button class="menu-item">
+        <span class="item-icon icon-green"><i class="bi bi-star-fill"></i></span>
+        <div class="item-body">
+          <p class="item-title">Rate the App</p>
+          <p class="item-sub">Share your feedback</p>
+        </div>
+        <span class="item-end"><i class="bi bi-chevron-right"></i></span>
+      </button>
+  
+    </div>
+  
+    <!-- SIGN OUT -->
+    <button class="signout-btn" data-bs-toggle="modal" data-bs-target="#signoutModal">
+      <i class="bi bi-box-arrow-right"></i> Sign Out
+    </button>
+  
+    <!-- DELETE ACCOUNT -->
+    <button class="delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+      <i class="bi bi-trash3-fill"></i> Delete Account
+    </button>
+  
+    <p class="version-tag">Ridesynk v1.0.0</p>
+  </div>
+  
+  
+  <!-- ── MODALS ── -->
+  
+  <!-- Edit Profile -->
+  <div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- <div class="text-center mb-4">
+            <div class="avatar mx-auto" style="width:68px;height:68px;font-size:1.4rem;">DC</div>
+            <button class="btn btn-sm mt-2" style="font-size:.8rem;color:var(--brand);font-weight:600;">
+              <i class="bi bi-camera-fill"></i> Change Photo
+            </button>
+          </div> -->
+          <form action="/ridesync/user?_method=PATCH" method="POST">
+            <div class="mb-3">
+              <label class="form-label">First Name</label>
+              <input type="text" class="form-control" name="update[firstname]" placeholder="<%= data.firstname ? data.firstname : 'enter firstname' %>">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Last Name</label>
+              <input type="text" name="update[lastname]" class="form-control" placeholder="<%=data.lastname ?data.lastname : 'enter last name' %>">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input type="email" name="update[email]" class="form-control" placeholder="<%=data.email%>">
+            </div>
+            <div class="mb-0">
+              <label class="form-label">Phone Number</label>
+              <input type="tel" class="form-control" name="update[phonenumber]" placeholder="+91 <%= data.phonenumber || "Enter phone number" %>">
+            </div>
+          
+            <div class="modal-footer">
+              <button class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn-brand btn" >Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Change Password -->
+  <div class="modal fade" id="changePasswordModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Change Password</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Current Password</label>
+            <input type="password" class="form-control" placeholder="••••••••">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">New Password</label>
+            <input type="password" class="form-control" placeholder="Min. 8 characters">
+          </div>
+          <div class="mb-0">
+            <label class="form-label">Confirm New Password</label>
+            <input type="password" class="form-control" placeholder="Re-enter new password">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn-brand btn" onclick="showToast('Password changed!')">Update Password</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Payment Methods -->
+  <div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Payment Methods</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-0">
+          <div class="menu-item" style="border-radius:0;">
+            <span class="item-icon icon-blue"><i class="bi bi-credit-card-fill"></i></span>
+            <div class="item-body">
+              <p class="item-title">Visa ending ••4242</p>
+              <p class="item-sub">Expires 08/27 · Default</p>
+            </div>
+            <span class="badge-admin">Default</span>
+          </div>
+          <div class="menu-item" style="border-radius:0;border-bottom:none;">
+            <span class="item-icon icon-green"><i class="bi bi-plus-circle-fill"></i></span>
+            <div class="item-body">
+              <p class="item-title" style="color:var(--success)">Add Payment Method</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Language -->
+  <div class="modal fade" id="languageModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Select Language</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-0">
+          <div id="langList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Sign Out Confirm -->
+  <div class="modal fade" id="signoutModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Sign Out?</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body pt-1" style="color:var(--muted);font-size:.9rem;">
+          You'll need to log in again to use Ridesynk.
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
+          <form action="/ridesync/logout" method="get">
+            <button class="btn-brand btn" type="submit">Sign Out</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Delete Account -->
+  <div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title" style="color:var(--danger)"><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Account</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body pt-1">
+          <p style="color:var(--muted);font-size:.9rem;">
+            This action is <strong>permanent</strong>. All your data, ride history, and saved places will be deleted immediately.
+          </p>
+          <label class="form-label">Type <strong>DELETE</strong> to confirm</label>
+          <input type="text" class="form-control" id="deleteConfirmInput" placeholder="DELETE">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
+          <form action="/ridesync/user/<%=data._id%>?_method=DELETE" method="POST">
+            <button class="btn-danger-soft btn" id="confirmDeleteBtn" disabled onclick="showToast('Account deleted')">Delete Permanently</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Toast -->
+  <div class="toast-container">
+    <div id="appToast" class="toast toast-success align-items-center" role="alert" aria-live="assertive">
+      <div class="d-flex">
+        <div class="toast-body d-flex align-items-center gap-2">
+          <i class="bi bi-check-circle-fill" style="color:var(--success)"></i>
+          <span id="toastMsg">Done!</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/settings.js"></script>
+</body>

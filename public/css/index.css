@@ -1,0 +1,8 @@
+body{
+    overflow-y:scroll;
+    scroll-snap-type:y proximity;
+}
+
+.paddiv{
+    height: 2rem;
+}

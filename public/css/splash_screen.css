@@ -1,0 +1,56 @@
+
+    :root {
+      --bg: #ffffff;
+      --fg: #111111;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    .app-shell {
+      background-color: var(--bg);
+      min-height: 100dvh;
+    }
+
+    #splash-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .logo-img {
+      width: 128px;
+      height: 128px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .tagline {
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      color: var(--fg);
+      margin: 0;
+    }
+
+    @keyframes logoIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to   { opacity: 1; transform: scale(1);   }
+    }
+
+    @keyframes logoOut {
+      from { opacity: 1; transform: scale(1);   }
+      to   { opacity: 0; transform: scale(1.1); }
+    }
+
+    #splash-content.entering {
+      animation: logoIn 0.5s ease forwards;
+    }
+
+    #splash-content.exiting {
+      animation: logoOut 0.5s ease forwards;
+    }

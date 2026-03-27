@@ -1,0 +1,132 @@
+
+    :root {
+      --bg:           #ffffff;
+      --fg:           #111111;
+      --card:         #f9f9f9;
+      --muted-bg:     #f3f4f6;
+      --border:       #e2e2e2;
+      --muted:        #6b7280;
+      --primary:      #e94560;
+      --primary-fg:   #ffffff;
+      --radius:       0.75rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg); color: var(--fg);
+    }
+
+    .page {
+      padding: 3.5rem 1.25rem 2rem;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* -- Header -- */
+    .header-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+    .back-btn {
+      width: 40px; height: 40px; border-radius: 0.5rem;
+      background: var(--muted-bg); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: opacity 0.2s;
+    }
+    .back-btn:hover { opacity: 0.7; }
+    .page-title { font-size: 1.25rem; font-weight: 800; margin: 0; }
+
+    /* -- Avatar block -- */
+    .avatar-block {
+      display: flex; flex-direction: column; align-items: center;
+      margin-bottom: 2rem;
+      animation: fadeUp 0.35s ease both;
+    }
+    .avatar-circle {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--primary); color: var(--primary-fg);
+      font-size: 1.5rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .member-name {
+      font-size: 1.25rem; font-weight: 800; margin: 0 0 0.5rem;
+    }
+    .status-badge {
+      font-size: 0.75rem; font-weight: 600;
+      background: var(--primary); color: var(--primary-fg);
+      padding: 0.25rem 0.75rem; border-radius: 999px;
+    }
+
+    /* -- Info cards -- */
+    .info-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .info-card {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--card);
+      opacity: 0;
+      animation: slideIn 0.3s ease forwards;
+    }
+    .info-icon {
+      width: 40px; height: 40px; border-radius: 0.5rem;
+      background: var(--muted-bg);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: var(--fg);
+    }
+    .info-label {
+      font-size: 0.7rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em; margin: 0;
+    }
+    .info-value {
+      font-size: 0.875rem; font-weight: 700; margin: 0.125rem 0 0;
+    }
+
+    /* -- ID card -- */
+    .id-card {
+      padding: 1rem; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--card);
+      margin-top: 0.5rem;
+      animation: fadeIn 0.35s ease 0.2s both;
+    }
+    .id-label {
+      font-size: 0.7rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 0.25rem;
+    }
+    .id-value {
+      font-size: 0.875rem; font-weight: 700;
+      font-family: 'Courier New', monospace; margin: 0;
+    }
+
+    /* -- Stats grid -- */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem; margin-top: 0.5rem;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem; text-align: center;
+    }
+    .stat-value {
+      font-size: 1.125rem; font-weight: 800; margin: 0 0 0.125rem;
+    }
+    .stat-label {
+      font-size: 0.625rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em; margin: 0;
+    }
+
+    /* -- Animations -- */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }

@@ -1,0 +1,204 @@
+<% layout("/layout/boilerplate.ejs") %>
+
+<script>
+  document.body.classList.add("live-tracking-page");
+</script>
+
+
+<!-- ══════════════ DATA INJECTION ══════════════ -->
+<script>
+  const map_token = "<%= map_token %>";
+  const rideData  = <%- JSON.stringify(data) %>;
+  const userid    = "<%= curruser._id %>";
+</script>
+ 
+<!-- NAVBAR -->
+<nav class="app-nav">
+  <button class="icon-btn" onclick="history.back()"><i class="bi bi-arrow-left"></i></button>
+  <h1><%= data.ridename %></h1>
+  <button class="icon-btn"><i class="bi bi-share"></i></button>
+</nav>
+
+<!-- LIVE BADGE -->
+<div class="live-badge"><span class="live-dot"></span> Live Tracking</div>
+
+<!-- NAVIGATION DIRECTION BAR -->
+<div class="nav-bar-container" id="navBarContainer" style="display:none;">
+  <div class="nav-icon" id="navIcon"><i class="bi bi-arrow-up-circle-fill"></i></div>
+  <div class="nav-content">
+    <div class="nav-dist" id="navDist"></div>
+    <div class="nav-text" id="navText"></div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- MAP CONTROLS -->
+<div class="map-controls">
+  <button class="map-ctrl-btn" id="btnRecenter" aria-label="Recenter Map" title="Recenter">
+    <i class="bi bi-crosshair"></i>
+  </button>
+  <button class="map-ctrl-btn" id="btnMapStyle" aria-label="Toggle Satellite" title="Toggle Map Style">
+    <i class="bi bi-layers"></i>
+  </button>
+  <button class="map-ctrl-btn" id="btnVoiceToggle" aria-label="Toggle Voice" title="Toggle Voice Navigation">
+    <i class="bi bi-volume-mute-fill" id="voiceIcon"></i>
+  </button>
+</div>
+
+
+
+<!-- BOTTOM SHEET -->
+<div class="sheet" id="sheet">
+
+  <!-- Drag handle -->
+  <div class="sheet-handle" id="sheetHandle">
+    <div class="handle-bar"></div>
+    <span class="handle-label" id="handleLabel">↑ Slide up for trip details</span>
+  </div>
+
+  <!-- Peek strip (collapsed only) -->
+  <div class="peek-strip" id="peekStrip">
+    <%
+      const distLabel  = (typeof data.distance  !== 'undefined') ? data.distance  + ' km' : '— km';
+      const etaLabel   = (typeof data.eta        !== 'undefined') ? data.eta                : '—';
+      const stopsLabel = (typeof data.fuelStops  !== 'undefined') ? data.fuelStops + ' Stops' : '— Stops';
+    %>
+    <div class="peek-chip" onclick="window.snapTo('mid')">
+      <i class="bi bi-geo-alt-fill"></i> <span id="distancePeekValue"><%= distLabel %></span>
+    </div>
+    <div class="peek-chip" onclick="window.snapTo('mid')">
+      <i class="bi bi-clock-fill"></i> <span id="etaPeekValue"><%= etaLabel %></span>
+    </div>
+    <div class="peek-chip" onclick="window.snapTo('mid')">
+      <i class="bi bi-fuel-pump-fill"></i> <span id="stopsPeekValue"><%= stopsLabel %></span>
+    </div>
+  </div>
+
+  <!-- Tab nav -->
+  <div class="tab-nav" id="tabNav" style="display:none">
+    <button class="tab-btn active" data-tab="plan">Trip Plan</button>
+    <button class="tab-btn"        data-tab="members">Members</button>
+    <button class="tab-btn"        data-tab="chat">Chat</button>
+  </div>
+
+  <!-- Scrollable content -->
+  <div class="sheet-body" id="sheetBody" style="display:none">
+
+    <!-- ── TRIP PLAN ── -->
+    <div class="tab-pane active" id="tab-plan">
+      <div class="row g-2 mb-1">
+        <div class="col-4"><div class="stat-card">
+          <div class="stat-icon dist"><i class="bi bi-signpost-split-fill"></i></div>
+          <div class="stat-value" id="distanceStatValue"><%= distLabel %></div>
+          <div class="stat-label">Distance</div>
+        </div></div>
+        <div class="col-4"><div class="stat-card">
+          <div class="stat-icon time"><i class="bi bi-clock-fill"></i></div>
+          <div class="stat-value" id="etaStatValue"><%= etaLabel %></div>
+          <div class="stat-label">Total ETA</div>
+        </div></div>
+        <div class="col-4"><div class="stat-card">
+          <div class="stat-icon fuel"><i class="bi bi-fuel-pump-fill"></i></div>
+          <div class="stat-value" id="stopsStatValue"><%= stopsLabel %></div>
+          <div class="stat-label">Fuel</div>
+        </div></div>
+      </div>
+
+      <div class="route-card">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-lightning-charge-fill text-warning"></i>
+          <span class="route-title"><%= data.ridename %></span>
+        </div>
+        <div class="route-meta"><span id="distanceRouteMetaValue"><%= distLabel %></span> · <span id="etaRouteMetaValue"><%= etaLabel %></span></div>
+        <span class="badge-active">● Active</span>
+      </div>
+
+      <div class="waypoints">
+        <div class="waypoint">
+          <div class="wp-dot start">A</div>
+          <div class="wp-info">
+            <div class="wp-name"><%= data.source || data.sorce || 'Start' %></div>
+            <div class="wp-sub">Departure</div>
+          </div>
+        </div>
+        <div class="waypoint">
+          <div class="wp-dot end">B</div>
+          <div class="wp-info">
+            <div class="wp-name"><%= data.destination %></div>
+            <div class="wp-sub">Destination</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MEMBERS ── -->
+    <div class="tab-pane" id="tab-members">
+      <div class="members-list">
+        <% for (let i = 0; i < members.length; i++) { %>
+          <%
+            const fullName = ((members[i].userId.firstname || '') + ' ' + (members[i].userId.lastname || '')).trim();
+            const adminId  = data.adminId;
+            const isAdmin  = String(members[i].userId._id) === String(adminId);
+            const colours  = ['av-bg-1','av-bg-2','av-bg-3','av-bg-4'];
+            const ci       = i % 4;
+            const initials = ((members[i].userId.firstname||'?')[0] + (members[i].userId.lastname||'?')[0]).toUpperCase();
+          %>
+          <div class="member-item">
+            <div class="member-avatar <%= colours[ci] %>">
+              <%= initials %>
+              <span class="sdot" style="background:var(--green)"></span>
+            </div>
+            <div class="member-info">
+              <div class="member-name"><%= fullName %></div>
+              <div class="member-role"><%= isAdmin ? 'Organizer' : 'Rider' %></div>
+            </div>
+            <span class="mbadge <%= isAdmin ? 'mbadge-driver' : 'mbadge-online' %>">
+              <%= isAdmin ? 'Admin' : 'Online' %>
+            </span>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- ── CHAT ── -->
+    <div class="tab-pane" id="tab-chat">
+      <div class="chat-messages" id="chatMessages">
+        <% for (let chat of messages) { %>
+          <% const isMe = chat.senderId._id.toString() === curruser._id.toString(); %>
+          <div class="msg-container <%= isMe ? 'me' : 'them' %>">
+            <% if (!isMe) { %>
+              <div class="msg-av av-bg-1">
+                <%= chat.senderId.firstname[0].toUpperCase() %>
+              </div>
+            <% } %>
+            <div class="msg-bubble <%= isMe ? 'bubble-me' : 'bubble-them' %>">
+              <% if (!isMe) { %>
+                <div class="msg-sender"><%= chat.senderId.firstname %></div>
+              <% } %>
+              <p class="msg-text"><%= chat.message %></p>
+              <div class="msg-meta">
+                <span class="msg-time"><%= new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></span>
+                <% if(isMe) { %><i class="bi bi-check-all ms-1 msg-ticks"></i><% } %>
+              </div>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+  </div><!-- /sheet-body -->
+</div><!-- /sheet -->
+
+<!-- CHAT INPUT — outside sheet so it stays above keyboard -->
+<div class="chat-bar" id="chatBar">
+  <input class="chat-input" id="chatInput" type="text" placeholder="Type a message…"/>
+  <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send message">
+    <i class="bi bi-send-fill"></i>
+  </button>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/map_page.js"></script>
+<script src="/js/socket.js"></script>

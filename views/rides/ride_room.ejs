@@ -1,0 +1,106 @@
+<% layout("/layout/boilerplate.ejs") %>
+
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header-row">
+    <button class="back-btn" onclick="history.back()" aria-label="Go back">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <div style="flex:1">
+      <p class="header-title">
+        <%= data.ridename %>
+      </p>
+      <p class="header-sub">
+        <%= "Today, " + data.time + " . " + members.length + " riders " %>
+      </p>
+    </div>
+  </div>
+
+  <!-- Route Summary -->
+  <div class="route-card">
+    <div class="route-pin">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+      <%= data.sorce %>
+    </div>
+    <!-- <div class="route-stops">
+      <p>1. Highway Junction</p>
+      <p>2. Beachside Café</p>
+    </div> -->
+    <div class="route-pin" style="margin-top:0.75rem">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+      <%= data.destination %>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions-grid">
+    <button class="action-btn action-primary" onclick="window.location.href='/ridesync/rideroom/<%= data._id %>/live-tracking'">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      LIVE TRACKING
+    </button>
+    <button class="action-btn action-default" onclick="window.location.href='/ridesync/rideroom/<%= data._id %>/add-members'">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+      </svg>
+      Add
+    </button>
+    <button class="action-btn action-default" onclick="window.location.href='/ridesync/rideroom/<%= data._id %>/sosalerts'">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      SOS Log
+    </button>
+  </div>
+
+  <!-- Members -->
+  <div class="section-header">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    Members
+  </div>
+
+  <div class="members-list" id="members-list">
+    <% members.forEach((member, i) => { %>
+      <div class="member-card">
+        <div class="member-avatar">
+          <%=member.userId.firstname && member.userId.lastname && member.userId.firstname.length>1 && member.userId.lastname.length>1 ? member.userId.firstname[0].toUpperCase() + member.userId.lastname[0].toUpperCase() : member.userId.username[0].toUpperCase() %>
+        </div>
+        <div style="flex:1">
+          <p class="member-name">
+            <%= member.userId.firstname && member.userId.lastname && member.userId.firstname.length>1 && member.userId.lastname.length>1 ? member.userId.firstname + " " + member.userId.lastname : member.userId.username%>
+          </p>
+          <p class="member-sub">
+            <%= member.userId.email %>
+          </p>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+
+</div>
+
+</body>
+
+ 

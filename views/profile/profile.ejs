@@ -1,0 +1,53 @@
+<% layout("/layout/boilerplate.ejs") %>
+ 
+<body>
+<div class="page">
+
+  <h1 class="page-title">Profile</h1>
+
+  <!-- Avatar block -->
+  <div class="avatar-block">
+    <div class="avatar-circle">
+      <%= data.firstname && data.lastname ? data.firstname[0].toUpperCase() + data.lastname[0].toUpperCase() : data.username[0].toUpperCase() %>
+    </div>
+    <h2 class="member-name">
+      <%= data.firstname && data.lastname ? data.firstname + " " + data.lastname : "not provide..."%>
+    </h2>
+    <div class="role-row">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      Admin
+    </div>
+    <p class="member-email">
+      <%= data.email ? data.email : "not provide.." %>
+    </p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <p class="stat-value">
+        <%=rides.length %>
+      </p>
+      <p class="stat-label">Rides</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-value">3.8k km</p>
+      <p class="stat-label">Distance</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-value">
+        <%= rides.length %>
+      </p>
+      <p class="stat-label">Members</p>
+    </div>
+  </div>
+ 
+  <!-- Info rows -->
+  <div class="info-list" id="info-list"></div>
+
+</div>
+
+</body>

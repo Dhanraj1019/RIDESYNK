@@ -1,0 +1,85 @@
+<% layout("/layout/boilerplate.ejs") %>
+  
+<body>
+<div class="app-shell">
+  <div class="inner">
+
+    <!-- Skip -->
+    <div class="skip-row">
+      <a href="/ridesync/skipprofile">
+        <button type="button" class="skip-btn" id="skip-btn">Skip →</button>
+      </a>
+    </div>
+
+    <!-- Logo -->
+    <div class="logo-wrap">
+      <!-- Swap for: <img src="/RideSynk.jpeg" alt="RideSynk"> -->
+      <div class="logo-placeholder">
+        RS
+      </div>
+    </div>
+
+    <!-- Heading -->
+    <div class="heading-block">
+      <h1>Complete Your Profile</h1>
+      <p>Fill in the remaining details to get started.</p>
+    </div>
+ 
+    <!-- Form -->
+    <form id="profile-form" class="needs-validation" novalidate method="post" action="/ridesync/saveprofile">
+      <!-- Email (read-only, pre-filled from auth) -->
+      <div>
+        <label class="field-label" for="email">Email Address</label>
+        <input class="field-input form-control emailinput" type="email" id="email" name="data[email]" value=<%= user.email %> read-only />
+      </div>
+      <!-- firstname -->
+      <div>
+        <label class="field-label" for="firstname">First Name</label>
+        <input class="field-input form-control" type="text" id="firstname" name="data[firstname]" placeholder="Gaurav" required />
+      </div>
+      <div class="invalid-feedback">
+        First name is required.
+      </div>
+      <div class="valid-feedback">
+        Looks good!
+      </div>
+      <!-- lastname -->
+      <div>
+        <label class="field-label" for="lastname">Last Name</label>
+        <input class="field-input form-control" type="text" id="lastname" name="data[lastname]" placeholder="Tanwar" required />
+      </div>
+      <div class="invalid-feedback">
+        Last name is required.
+      </div>
+      <div class="valid-feedback">
+        Looks good!
+      </div>
+      <!-- Phone -->
+      <div>
+        <label class="field-label" for="phone">Phone Number</label>
+        <input class="field-input form-control" type="tel" id="phone" name="data[phonenumber]" placeholder="+91 1234567890" required />
+      </div>
+      <div class="invalid-feedback">
+        Phone number is required.
+      </div>
+      <div class="valid-feedback">
+        Looks good!
+      </div>
+      <!-- Bike Name -->
+      <div>
+        <label class="field-label" for="bikeName">Vehical Name</label>
+        <input class="field-input form-control" type="text" id="bikeName" name="data[vehical]" placeholder="e.g. Ducati Monster 821" required />
+      </div>
+      <div class="invalid-feedback">
+        Vehical name is required.
+      </div>
+      <div class="valid-feedback">
+        Looks good!
+      </div>
+      <button type="submit" class="btn-primary-custom" id="submit-btn">Save &amp; Continue</button>
+    </form>
+
+  </div>
+</div>
+
+</body>

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>All Rides</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary:      #FF6B35;
+      --primary-soft: #FFF3EE;
+      --primary-glow: rgba(255,107,53,0.15);
+      --blue:         #3B82F6;
+      --blue-soft:    #EFF6FF;
+      --green:        #10B981;
+      --green-soft:   #ECFDF5;
+      --amber:        #F59E0B;
+      --amber-soft:   #FFFBEB;
+      --bg:           #F1F4F9;
+      --card:         #FFFFFF;
+      --border:       #E8ECF2;
+      --t1:           #0F172A;
+      --t2:           #475569;
+      --t3:           #94A3B8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--t2);
+      min-height: 100vh;
+    }
+    .page-wrap {
+      max-width: 480px;
+      margin: 0 auto;
+      padding-bottom: 32px;
+    }
+
+    /* Header */
+    .page-header {
+      background: var(--card);
+      padding: 52px 20px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .hdr-sub {
+      font-size: 0.7rem; font-weight: 500;
+      color: var(--t3); text-transform: uppercase;
+      letter-spacing: 0.06em; margin-bottom: 3px;
+    }
+    .hdr-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.7rem; font-weight: 700;
+      color: var(--t1); letter-spacing: -0.02em;
+    }
+    .avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--blue));
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 1.1rem;
+      box-shadow: 0 4px 12px var(--primary-glow);
+      flex-shrink: 0;
+    }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 10px;
+      padding: 16px;
+    }
+    .stat-box {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 14px 8px;
+      text-align: center;
+      border: 1.5px solid var(--border);
+    }
+    .stat-box.hot {
+      background: var(--primary);
+      border-color: var(--primary);
+      box-shadow: 0 6px 18px var(--primary-glow);
+    }
+    .stat-box.hot .sn, .stat-box.hot .sl { color: #fff; }
+    .sn {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.5rem; font-weight: 700;
+      color: var(--t1); line-height: 1; display: block;
+    }
+    .sl {
+      font-size: 0.63rem; font-weight: 600;
+      color: var(--t3); text-transform: uppercase;
+      letter-spacing: 0.05em; display: block; margin-top: 5px;
+    }
+
+    /* Tabs */
+    .tabs-wrap {
+      display: flex; gap: 8px;
+      padding: 0 16px 14px;
+    }
+    .tab {
+      border: 1.5px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-family: 'Sora', sans-serif;
+      font-size: 0.75rem; font-weight: 600;
+      color: var(--t3); background: var(--card);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    /* Section label */
+    .sec-label {
+      font-size: 0.68rem; font-weight: 600;
+      color: var(--t3); text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding: 0 16px 10px;
+    }
+
+    /* Ride Card */
+    .ride-card {
+      background: var(--card);
+      border-radius: 24px;
+      margin: 0 16px 14px;
+      padding: 18px;
+      border: 1.5px solid var(--border);
+      box-shadow: 0 2px 10px rgba(15,23,42,0.05);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      animation: fadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    .ride-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(15,23,42,0.09);
+    }
+    .ride-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--blue));
+      border-radius: 24px 24px 0 0;
+    }
+    .ride-card:nth-child(1){ animation-delay:0ms }
+    .ride-card:nth-child(2){ animation-delay:80ms }
+    .ride-card:nth-child(3){ animation-delay:160ms }
+    .ride-card:nth-child(4){ animation-delay:240ms }
+
+    /* Card top */
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .ride-name {
+      font-family: 'Sora', sans-serif;
+      font-size: 1rem; font-weight: 700;
+      color: var(--t1); line-height: 1.2;
+    }
+    .ride-id {
+      font-size: 0.67rem; color: var(--t3); margin-top: 2px;
+    }
+    .status-pill {
+      font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 4px 10px; border-radius: 100px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .done { background: var(--green-soft); color: var(--green); }
+    .soon { background: var(--amber-soft); color: var(--amber); }
+
+    /* Route block */
+    .route-block {
+      background: var(--bg);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      position: relative;
+    }
+    .route-stop {
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .route-stop + .route-stop { margin-top: 12px; }
+    .stop-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0; margin-top: 4px; border: 2px solid;
+    }
+    .stop-dot.o { border-color: var(--primary); background: var(--primary-soft); }
+    .stop-dot.d { border-color: var(--blue);    background: var(--blue-soft); }
+    .connector {
+      position: absolute;
+      left: calc(14px + 4px); /* padding + dot-center */
+      top: calc(14px + 13px); /* padding + dot-height + margin-top */
+      width: 2px; height: 12px;
+      background: repeating-linear-gradient(
+        to bottom,
+        var(--border) 0, var(--border) 4px,
+        transparent 4px, transparent 7px
+      );
+    }
+    .stop-lbl {
+      font-size: 0.6rem; font-weight: 600;
+      color: var(--t3); text-transform: uppercase;
+      letter-spacing: 0.05em; margin-bottom: 2px;
+    }
+    .stop-name {
+      font-family: 'Sora', sans-serif;
+      font-size: 0.85rem; font-weight: 600;
+      color: var(--t1); line-height: 1.3;
+    }
+
+    /* Card meta */
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 9px;
+      font-size: 0.7rem; font-weight: 500; color: var(--t2);
+    }
+    .chip i { font-size: 0.72rem; color: var(--primary); }
+    .riders-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--primary-soft);
+      border-radius: 8px; padding: 5px 9px;
+      font-family: 'Sora', sans-serif;
+      font-size: 0.7rem; font-weight: 700; color: var(--primary);
+    }
+    .arrow-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; text-decoration: none; flex-shrink: 0;
+      box-shadow: 0 4px 12px var(--primary-glow);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .arrow-btn:hover { background: var(--blue); transform: scale(1.1); color: #fff; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <p class="hdr-sub">Good morning 👋</p>
+      <h1 class="hdr-title">All Rides</h1>
+    </div>
+    <div class="avatar"><i class="bi bi-person-fill"></i></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-box"><span class="sn">12</span><span class="sl">Total</span></div>
+    <div class="stat-box hot"><span class="sn">3</span><span class="sl">Upcoming</span></div>
+    <div class="stat-box"><span class="sn">88</span><span class="sl">Riders</span></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-wrap">
+    <button class="tab active">All</button>
+    <button class="tab">Upcoming</button>
+    <button class="tab">Completed</button>
+  </div>
+
+  <p class="sec-label">Recent Rides</p>
+
+  <!-- Card 1 -->
+  <div class="ride-card">
+    <div class="card-top">
+      <div><div class="ride-name">First Ride</div><div class="ride-id">#RIDE-001</div></div>
+      <span class="status-pill done">✓ Done</span>
+    </div>
+    <div class="route-block">
+      <div class="connector"></div>
+      <div class="route-stop">
+        <div class="stop-dot o"></div>
+        <div><div class="stop-lbl">From</div><div class="stop-name">City Center</div></div>
+      </div>
+      <div class="route-stop">
+        <div class="stop-dot d"></div>
+        <div><div class="stop-lbl">To</div><div class="stop-name">Airport Terminal 2</div></div>
+      </div>
+    </div>
+    <div class="card-meta">
+      <div class="chips">
+        <span class="chip"><i class="bi bi-calendar3"></i> Mon, 24 Mar</span>
+        <span class="chip"><i class="bi bi-clock"></i> 08:30 AM</span>
+        <span class="riders-chip"><i class="bi bi-people-fill"></i> 88</span>
+      </div>
+      <a href="#" class="arrow-btn"><i class="bi bi-arrow-right"></i></a>
+    </div>
+  </div>
+
+  <!-- Card 2 -->
+  <div class="ride-card">
+    <div class="card-top">
+      <div><div class="ride-name">Second Ride</div><div class="ride-id">#RIDE-002</div></div>
+      <span class="status-pill soon">⏳ Soon</span>
+    </div>
+    <div class="route-block">
+      <div class="connector"></div>
+      <div class="route-stop">
+        <div class="stop-dot o"></div>
+        <div><div class="stop-lbl">From</div><div class="stop-name">Hotel Grand</div></div>
+      </div>
+      <div class="route-stop">
+        <div class="stop-dot d"></div>
+        <div><div class="stop-lbl">To</div><div class="stop-name">Convention Hall</div></div>
+      </div>
+    </div>
+    <div class="card-meta">
+      <div class="chips">
+        <span class="chip"><i class="bi bi-calendar3"></i> Wed, 26 Mar</span>
+        <span class="chip"><i class="bi bi-clock"></i> 02:15 PM</span>
+        <span class="riders-chip"><i class="bi bi-people-fill"></i> 88</span>
+      </div>
+      <a href="#" class="arrow-btn"><i class="bi bi-arrow-right"></i></a>
+    </div>
+  </div>
+
+  <!-- Card 3 -->
+  <div class="ride-card">
+    <div class="card-top">
+      <div><div class="ride-name">Third Ride</div><div class="ride-id">#RIDE-003</div></div>
+      <span class="status-pill soon">⏳ Soon</span>
+    </div>
+    <div class="route-block">
+      <div class="connector"></div>
+      <div class="route-stop">
+        <div class="stop-dot o"></div>
+        <div><div class="stop-lbl">From</div><div class="stop-name">University Gate</div></div>
+      </div>
+      <div class="route-stop">
+        <div class="stop-dot d"></div>
+        <div><div class="stop-lbl">To</div><div class="stop-name">Stadium South</div></div>
+      </div>
+    </div>
+    <div class="card-meta">
+      <div class="chips">
+        <span class="chip"><i class="bi bi-calendar3"></i> Fri, 28 Mar</span>
+        <span class="chip"><i class="bi bi-clock"></i> 10:00 AM</span>
+        <span class="riders-chip"><i class="bi bi-people-fill"></i> 56</span>
+      </div>
+      <a href="#" class="arrow-btn"><i class="bi bi-arrow-right"></i></a>
+    </div>
+  </div>
+
+  <!-- Card 4 -->
+  <div class="ride-card">
+    <div class="card-top">
+      <div><div class="ride-name">Fourth Ride</div><div class="ride-id">#RIDE-004</div></div>
+      <span class="status-pill done">✓ Done</span>
+    </div>
+    <div class="route-block">
+      <div class="connector"></div>
+      <div class="route-stop">
+        <div class="stop-dot o"></div>
+        <div><div class="stop-lbl">From</div><div class="stop-name">Beach Road</div></div>
+      </div>
+      <div class="route-stop">
+        <div class="stop-dot d"></div>
+        <div><div class="stop-lbl">To</div><div class="stop-name">Central Park</div></div>
+      </div>
+    </div>
+    <div class="card-meta">
+      <div class="chips">
+        <span class="chip"><i class="bi bi-calendar3"></i> Sun, 30 Mar</span>
+        <span class="chip"><i class="bi bi-clock"></i> 06:45 PM</span>
+        <span class="riders-chip"><i class="bi bi-people-fill"></i> 34</span>
+      </div>
+      <a href="#" class="arrow-btn"><i class="bi bi-arrow-right"></i></a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

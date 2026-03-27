@@ -1,0 +1,281 @@
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    :root {
+      --red:    #FF2D55;
+      --orange: #FF6B00;
+      --yellow: #FFD60A;
+      --sky:    #E8F4FF;
+      --road:   #2D2D3A;
+      --white:  #FFFFFF;
+      --text:   #111118;
+      --muted:  #7A7A95;
+      --card:   #FFFFFF;
+    }
+ 
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #F0F4FF;
+      min-height: 100vh;
+      /* overflow: hidden; */
+    }
+ 
+    /* ── sky background ── */
+    .sky {
+      position: fixed; inset: 0; z-index: 0;
+      background: linear-gradient(180deg, #C8E6FF 0%, #EEF6FF 55%, #F5F0E8 100%);
+    }
+ 
+    /* ── sun ── */
+    .sun {
+      position: fixed;
+      top: -60px; right: 80px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, #FFE566 0%, #FFD60A 50%, transparent 75%);
+      border-radius: 50%;
+      filter: blur(4px);
+      z-index: 1;
+      animation: sunPulse 4s ease-in-out infinite;
+    }
+    @keyframes sunPulse {
+      0%,100% { transform: scale(1); opacity: .9; }
+      50%      { transform: scale(1.05); opacity: 1; }
+    }
+ 
+    /* ── clouds ── */
+    .clouds { position: fixed; top: 0; left: 0; width: 100%; height: 45%; z-index: 1; overflow: hidden; }
+    .cloud {
+      position: absolute;
+      background: white;
+      border-radius: 50px;
+      opacity: .85;
+    }
+    .cloud::before, .cloud::after {
+      content: ''; position: absolute;
+      background: white; border-radius: 50%;
+    }
+    .c1 { width: 120px; height: 36px; top: 40px; left: -130px; animation: cloudMove 18s linear infinite; }
+    .c1::before { width: 55px; height: 55px; top: -28px; left: 15px; }
+    .c1::after  { width: 40px; height: 40px; top: -20px; left: 50px; }
+ 
+    .c2 { width: 90px; height: 28px; top: 80px; left: -100px; opacity: .65; animation: cloudMove 26s linear infinite 6s; }
+    .c2::before { width: 42px; height: 42px; top: -22px; left: 12px; }
+    .c2::after  { width: 32px; height: 32px; top: -16px; left: 38px; }
+ 
+    .c3 { width: 150px; height: 42px; top: 20px; left: -160px; opacity: .7; animation: cloudMove 22s linear infinite 11s; }
+    .c3::before { width: 65px; height: 65px; top: -34px; left: 20px; }
+    .c3::after  { width: 50px; height: 50px; top: -26px; left: 68px; }
+ 
+    @keyframes cloudMove {
+      from { transform: translateX(0); }
+      to   { transform: translateX(calc(100vw + 200px)); }
+    }
+ 
+    /* ── road ── */
+    .road-wrap {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 38%;
+      z-index: 2;
+    }
+    .road {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 85%;
+      background: var(--road);
+    }
+    /* road texture */
+    .road::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent 0px, transparent 46px,
+        rgba(255,255,255,.06) 46px, rgba(255,255,255,.06) 48px
+      );
+    }
+    /* center dashes */
+    .road-dashes {
+      position: absolute;
+      top: 42%; left: 0; right: 0;
+      height: 6px;
+      display: flex; gap: 0;
+      overflow: hidden;
+    }
+    .dash {
+      flex-shrink: 0;
+      width: 60px; height: 100%;
+      background: var(--yellow);
+      border-radius: 3px;
+      margin-right: 40px;
+      animation: dashScroll 1.2s linear infinite;
+    }
+    @keyframes dashScroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-100px); }
+    }
+    /* kerb */
+    .kerb {
+      position: absolute; top: 0; left: 0; right: 0; height: 10px;
+      background: repeating-linear-gradient(90deg, #FF2D55 0px, #FF2D55 20px, white 20px, white 40px);
+      border-radius: 2px 2px 0 0;
+    }
+ 
+    /* ── car ── */
+    .car-wrap {
+      position: fixed;
+      bottom: 30%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      animation: carBounce 0.35s ease-in-out infinite alternate;
+    }
+    @keyframes carBounce {
+      from { transform: translateX(-50%) translateY(0); }
+      to   { transform: translateX(-50%) translateY(-3px); }
+    }
+    .car-svg { width: 160px; filter: drop-shadow(0 8px 20px rgba(0,0,0,.2)); }
+ 
+    /* wheel spin */
+    .wheel { animation: spin 0.6s linear infinite; transform-box: fill-box; transform-origin: center; }
+ 
+    @keyframes spin { to { transform: rotate(360deg); } }
+ 
+    /* exhaust puff */
+    .puff {
+      position: absolute;
+      right: 100%; bottom: 20px;
+      display: flex; gap: 4px; align-items: center;
+    }
+    .p { width: 10px; height: 10px; border-radius: 50%; background: rgba(0,0,0,.12); animation: puffOut 1s ease-out infinite; }
+    .p:nth-child(2) { width: 14px; height: 14px; animation-delay: .2s; }
+    .p:nth-child(3) { width: 8px; height: 8px; animation-delay: .4s; }
+    @keyframes puffOut {
+      0%   { opacity: .7; transform: scale(1) translateX(0); }
+      100% { opacity: 0; transform: scale(2.5) translateX(-18px); }
+    }
+ 
+    /* ── content card ── */
+    .shell {
+      position: relative; z-index: 20;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      pointer-events: none;
+    }
+ 
+    .card {
+      background: rgba(255,255,255,.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1.5px solid rgba(255,255,255,.9);
+      border-radius: 28px;
+      padding: 36px 40px 32px;
+      text-align: center;
+      max-width: 440px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
+      pointer-events: all;
+      animation: cardIn .6s cubic-bezier(.22,1,.36,1) both;
+      margin-bottom: 30%;
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(30px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+ 
+    /* brand */
+    .brand {
+      display: inline-flex; align-items: center; gap: 8px;
+      text-decoration: none; margin-bottom: 20px;
+    }
+    .brand-dot {
+      width: 32px; height: 32px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--red), var(--orange));
+      display: grid; place-items: center;
+      box-shadow: 0 4px 14px rgba(255,45,85,.35);
+    }
+    .brand-name {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 1.05rem; color: var(--text); letter-spacing: -.02em;
+    }
+ 
+    /* status */
+    .status-code {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(4.5rem, 16vw, 7.5rem);
+      font-weight: 900; line-height: 1;
+      letter-spacing: -.06em;
+      background: linear-gradient(135deg, var(--red) 0%, var(--orange) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 2px;
+      animation: cardIn .6s .1s cubic-bezier(.22,1,.36,1) both;
+    }
+ 
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, rgba(255,45,85,.1), rgba(255,107,0,.08));
+      border: 1px solid rgba(255,45,85,.2);
+      border-radius: 30px; padding: 5px 14px;
+      font-size: .7rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--red); margin-bottom: 14px;
+      animation: cardIn .6s .14s cubic-bezier(.22,1,.36,1) both;
+    }
+    .pill-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--red);
+      animation: blink 1.2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+ 
+    .message {
+      font-size: .92rem; font-weight: 400; color: var(--muted);
+      line-height: 1.65; max-width: 320px; margin: 0 auto 24px;
+      animation: cardIn .6s .18s cubic-bezier(.22,1,.36,1) both;
+    }
+ 
+    /* road strip divider */
+    .road-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 22px;
+      animation: cardIn .6s .22s cubic-bezier(.22,1,.36,1) both;
+    }
+    .rd-line { flex: 1; height: 2px; background: #F0F0F8; border-radius: 1px; }
+    .rd-icon { color: var(--muted); font-size: .85rem; }
+ 
+    /* buttons */
+    .actions {
+      display: flex; flex-direction: column; gap: 10px;
+      animation: cardIn .6s .26s cubic-bezier(.22,1,.36,1) both;
+    }
+ 
+    .btn-home {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--red), var(--orange));
+      color: white; border: none; border-radius: 14px;
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: .9rem; text-decoration: none; cursor: pointer;
+      box-shadow: 0 6px 22px rgba(255,45,85,.35);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn-home:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255,45,85,.45); color: white; }
+ 
+    .btn-row { display: flex; gap: 10px; }
+    .btn-secondary {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px;
+      background: #F4F4FA; color: var(--text);
+      border: none; border-radius: 14px;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600;
+      font-size: .84rem; text-decoration: none; cursor: pointer;
+      transition: background .14s;
+    }
+    .btn-secondary:hover { background: #EAEAF5; color: var(--text); }
+ 
+    /* error ref */
+    .err-ref {
+      margin-top: 18px; font-size: .7rem; color: #BABACE;
+      animation: cardIn .6s .3s cubic-bezier(.22,1,.36,1) both;
+    }
+    .err-ref code { font-family: monospace; background: #F4F4FA; padding: 1px 6px; border-radius: 5px; font-size: .68rem; }
+ 

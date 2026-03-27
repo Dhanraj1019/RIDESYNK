@@ -1,0 +1,88 @@
+<% layout("/layout/boilerplate.ejs") %>
+  
+<body>
+<div class="app-shell">
+  <div class="inner">
+
+    <!-- Logo -->
+    <div class="logo-wrap">
+      <!-- Swap for: <img src="/RideSynk.jpeg" alt="RideSynk"> -->
+      <div class="logo-placeholder">
+        RS
+      </div>
+    </div>
+
+    <!-- Heading -->
+    <div class="heading-block">
+      <h1 id="heading-title">Welcome Back</h1>
+      <p id="heading-sub">Sign in to continue managing your rides.</p>
+    </div>
+
+    <!-- Form -->
+    <form id="auth-form" class="needs-validation" method="post" action="/ridesync/login" novalidate>
+      <div>
+        <label class="field-label" for="username">Username</label>
+        <div class="input-wrap">
+          <input class="field-input form-control" type="text" id="username" name="username" placeholder="demo0" required />
+          <div class="invalid-feedback">
+            Please enter a username.
+          </div>
+          <div class="valid-feedback">
+            Looks good!
+          </div>
+          <!-- Check icon (shown when verified) -->
+          <span id="email-check" class="input-icon check-icon hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </span>
+        </div>
+        
+      </div>
+
+      <!-- Password -->
+      <div>
+        <label class="field-label" name="password" for="password">Password</label>
+        <div class="input-wrap">
+          <input class="field-input form-control" type="password" id="password" name="password" placeholder="••••••••" required minlength="3" />
+          <div class="invalid-feedback">
+            Please enter a password.
+          </div>
+          <div class="valid-feedback">
+            Looks good!
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary-custom" id="submit-btn">Sign In</button>
+    </form>
+
+    <!-- Toggle row -->
+    <p class="toggle-row">
+      <span id="toggle-label">Don't have an account?</span>
+      <a id="toggle-mode-btn" href="/ridesync/signup">Sign Up</a>
+    </p>
+
+  </div>
+</div>
+<script>
+            (() => {
+            'use strict'
+            
+            // Fetch all the forms we want to apply custom Bootstrap validation styles to
+            const forms = document.querySelectorAll('.needs-validation')
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+            
+                form.classList.add('was-validated')
+                }, false)
+            })
+            })()
+        </script>
+</body>

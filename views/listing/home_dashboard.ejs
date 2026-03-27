@@ -1,0 +1,127 @@
+<% layout("/layout/boilerplate.ejs") %>
+
+<body>
+  <div class="page">
+    <div class="brand-bar">RideSynk</div>
+
+    <div class="header-row">
+      <button class="avatar-trigger" id="open-drawer">
+        <div class="avatar-circle" id="avatar-initials">
+          <%= (data.firstname && data.lastname ? data.firstname[0].toUpperCase() + data.lastname[0].toUpperCase() : data.username[0].toUpperCase() )%>
+        </div>
+        <div>
+          <p class="greeting-sub" id="greeting-text">Good Morning</p>
+          <p class="greeting-name" id="user-name">
+            <%= ((data.firstname && data.lastname) ? data.firstname + " " + data.lastname : data.username)%>
+          </p>
+        </div>
+      </button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <p class="stat-value">
+          <%= rides.length %>
+        </p><p class="stat-label">Total Rides</p>
+      </div>
+      <div class="stat-card" style="animation-delay:0.05s">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <p class="stat-value">
+          <%= members %>
+        </p><p class="stat-label">Members</p>
+      </div>
+      <div class="stat-card" style="animation-delay:0.1s">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <p class="stat-value">0</p><p class="stat-label">SOS Alerts</p>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <h2>Your Rides</h2>
+      <button class="view-all-btn" onclick="window.location.href='/ridesync/<%= data._id %>/rides'">View All</button>
+    </div>
+
+  <% rides.forEach((ride, i) => { %>
+    
+    <button class="ride-card mb-1" onclick="window.location.href='/ridesync/rideroom/<%= ride.rideId._id %>'">
+
+      <div class="ride-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
+
+      <div class="ride-info">
+        <p class="ride-name"><%= ride.rideId.ridename %></p>
+        <p class="ride-meta">
+          <%= new Date(ride.rideId.date).toDateString() + " . " + ride.rideId.totalMembers %>
+        </p>
+      </div>
+
+      <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+
+    </button>
+
+    <% }) %>
+
+</div>
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <button style="border: none;" class="fab" onclick="window.location.href='/ridesync/createride'" aria-label="Create new ride">
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+
+  <!-- Drawer -->
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+  <div class="drawer" id="profile-drawer" role="dialog" aria-label="Profile">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <p class="drawer-title">Profile</p>
+      <button id="close-drawer" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.25rem;">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <div style="text-align:center">
+        <div class="drawer-avatar" id="drawer-avatar">
+          <%= (data.firstname && data.lastname ? data.firstname[0].toUpperCase() + data.lastname[0].toUpperCase() : data.username[0].toUpperCase() )%>
+        </div>
+        <p class="drawer-name" id="drawer-name">
+          <%= (data.firstname && data.lastname ? data.firstname + " " + data.lastname : data.username) %>
+        </p>
+        <div class="drawer-role">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Member</span>
+        </div>
+        <p class="drawer-email" id="drawer-email">
+          <%= data.email %>
+        </p>
+      </div>
+      <div class="stat-mini-grid">
+        <div class="stat-mini"><p class="stat-mini-val">
+          <%= rides.length %>
+        </p><p class="stat-mini-lbl">Rides</p></div>
+        <div class="stat-mini"><p class="stat-mini-val">3.8k</p><p class="stat-mini-lbl">km</p></div>
+        <div class="stat-mini"><p class="stat-mini-val">
+          <%= members %>
+        </p><p class="stat-mini-lbl">Total Members</p></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.5rem">
+        <div class="info-row"><p class="info-row-label">Vehical</p><p class="info-row-val" id="drawer-bike">
+          <%= data.vehical || "..." %>
+        </p></div>
+        <div class="info-row"><p class="info-row-label">Phone</p><p class="info-row-val" id="drawer-phone">
+          <%= data.phonenumber || "..." %>
+        </p></div>
+      </div>
+      <button class="btn-primary-custom" onclick="window.location.href='/ridesync/profile'">View Full Profile</button>
+    </div>
+  </div>
+  <!-- <script src="/js/home_dashboard.js"></script> -->
+</body>

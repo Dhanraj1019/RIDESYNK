@@ -1,0 +1,122 @@
+
+    /* -- Design tokens -- */
+    :root {
+      --bg:           #ffffff;
+      --fg:           #111111;
+      --card:         #f9f9f9;
+      --muted-bg:     #f3f4f6;
+      --border:       #e2e2e2;
+      --muted:        #6b7280;
+      --primary:      #e94560;
+      --primary-fg:   #ffffff;
+      --primary-ring: rgba(233,69,96,0.20);
+      --radius:       0.75rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg); color: var(--fg);
+    }
+
+    .page {
+      padding: 3.5rem 1.25rem 2rem;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* -- Header -- */
+    .header-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+    .back-btn {
+      width: 40px; height: 40px; border-radius: 0.5rem;
+      background: var(--muted-bg); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: opacity 0.2s;
+    }
+    .back-btn:hover { opacity: 0.7; }
+    .page-title { font-size: 1.25rem; font-weight: 800; margin: 0; }
+
+    /* -- Cards shared -- */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    /* -- Ride title card -- */
+    .title-card {
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      animation: fadeUp 0.35s ease both;
+    }
+    .title-card h2 { font-size: 1.125rem; font-weight: 800; margin: 0 0 0.25rem; }
+    .title-card p  { font-size: 0.75rem; color: var(--muted); margin: 0; }
+
+    /* -- Stats grid -- */
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.75rem; margin-bottom: 1.25rem;
+    }
+    .stat-card {
+      padding: 1rem;
+      animation: scaleIn 0.3s ease both;
+    }
+    .stat-card svg  { display: block; margin-bottom: 0.5rem; }
+    .stat-value     { font-size: 1.25rem; font-weight: 800; margin: 0 0 0.125rem; }
+    .stat-label     {
+      font-size: 0.625rem; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+      margin: 0;
+    }
+
+    /* -- Route card -- */
+    .route-card {
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .route-card h3 {
+      font-size: 0.875rem; font-weight: 700; margin: 0 0 0.75rem;
+    }
+    .route-points { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .route-point {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .point-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-start, .dot-end { background: var(--fg); }
+    .dot-stop            { background: var(--muted-bg); border: 1px solid var(--border); }
+
+    .point-name {
+      flex: 1; font-size: 0.875rem; font-weight: 600; margin: 0;
+    }
+    .point-time {
+      font-size: 0.75rem; color: var(--muted);
+    }
+
+    /* -- Back to Home button -- */
+    .btn-primary-custom {
+      width: 100%; height: 3rem;
+      border-radius: 0.5rem;
+      background: var(--primary); color: var(--primary-fg);
+      font-weight: 700; font-size: 0.875rem;
+      border: none; cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .btn-primary-custom:active { transform: scale(0.98); }
+
+    /* -- Animations -- */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to   { opacity: 1; transform: scale(1); }
+    }

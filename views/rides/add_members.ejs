@@ -1,0 +1,119 @@
+<% layout("/layout/boilerplate.ejs") %>
+  
+<body>
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <a class="back-btn" onclick="history.back()" href="#">
+      <i class="fa-solid fa-arrow-left" style="font-size:.82rem;"></i>
+    </a>
+    <div>
+      <div class="header-title">Add Members</div>
+      <div class="header-sub">Search by phone number to invite</div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="page-body">
+
+    <!-- SEARCH SECTION -->
+    <div class="section-label">Search by phone number</div>
+    <div class="search-wrap">
+      <div class="search-input-wrap">
+        <input
+          class="search-input"
+          id="phone-input"
+          type="tel"
+          placeholder="Enter phone number…"
+          autocomplete="off"
+          oninput="clearSearch()"
+        />
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </div>
+      <button class="search-btn" onclick="doSearch()">
+        <i class="fa-solid fa-magnifying-glass" style="margin-right:5px;font-size:.75rem;"></i>Search
+      </button>
+    </div>
+
+    <!-- SEARCH RESULT -->
+    <div id="search-result">
+      <div class="result-card">
+        <div class="mem-avatar av-3" id="result-avatar">A</div>
+        <div class="result-info">
+          <div class="result-name" id="result-name">—</div>
+          <div class="result-phone" id="result-phone">—</div>
+        </div>
+        <button class="add-btn" id="add-result-btn" onclick="addFromSearch()">
+          <i class="fa-solid fa-plus" style="margin-right:4px;font-size:.7rem;"></i>Add
+        </button>
+      </div>
+    </div>
+
+    <!-- NOT FOUND -->
+    <div id="not-found">
+      <i class="fa-solid fa-user-slash"></i>
+      <p>No user found with this phone number.<br>Check the number and try again.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- MEMBERS LIST -->
+    <div class="members-header">
+      <div class="section-label" style="margin:0;">Members in ride</div>
+      <div class="member-count-badge" id="count-badge">
+        <%= data.length + "members" %>
+      </div>
+    </div>
+
+    <div id="member-list">
+      <!-- Admin (always present, cannot be removed) -->
+       <% for(let m of data) { %>
+        <div class="member-item" id="admin-item">
+          <div class="mem-avatar av-1 online">
+            <%= m.userId.firstname[0].toUpperCase() %>
+          </div>
+          <div class="mem-info">
+            <div class="mem-name">
+              <%= m.userId.firstname + " " + m.userId.lastname %>
+            </div>
+            <div class="mem-phone">
+              <%= m.userId.phonenumber %>
+            </div>
+          </div>
+          <div class="mem-actions">
+            <span class="role-badge role-admin">
+              <% if(m.userId._id.toString() === m.rideId.adminId.toString()) { %>
+                <%= "Admin" %>
+              <% }  else { %>
+                <%= "Member" %>
+              <% } %>
+            </span>
+          </div>
+        </div>
+       <% } %>
+    </div>
+
+    <!-- EMPTY STATE (shown when only admin remains after removals) -->
+    <div id="empty-state">
+      <i class="fa-solid fa-users-slash"></i>
+      <p>No other members yet.<br>Search by phone number to add people to this ride.</p>
+    </div>
+
+  </div><!-- /page-body -->
+
+  <!-- DONE BUTTON -->
+  <div class="done-bar">
+    <button class="done-btn" onclick="handleDone()">
+      Done
+      <span class="done-count" id="done-count">
+        <%= data.length %>
+      </span>
+    </button>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+</body>

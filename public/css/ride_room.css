@@ -1,0 +1,137 @@
+
+    /* -- Design tokens -- */
+    :root {
+      --bg:           #ffffff;
+      --fg:           #111111;
+      --card:         #f9f9f9;
+      --muted-bg:     #f3f4f6;
+      --border:       #e2e2e2;
+      --muted:        #6b7280;
+      --primary:      #e94560;
+      --primary-fg:   #ffffff;
+      --radius:       0.75rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg); color: var(--fg);
+    }
+
+    .page {
+      padding: 3.5rem 1.25rem 2rem;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* -- Header -- */
+    .header-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .back-btn {
+      width: 40px; height: 40px; border-radius: 0.5rem;
+      background: var(--muted-bg); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: opacity 0.2s;
+    }
+    .back-btn:hover { opacity: 0.7; }
+    .header-title  { font-size: 1.125rem; font-weight: 800; margin: 0; line-height: 1.2; }
+    .header-sub    { font-size: 0.75rem; color: var(--muted); margin: 0.125rem 0 0; }
+
+    /* -- Route card -- */
+    .route-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+      animation: fadeUp 0.35s ease both;
+    }
+    .route-pin {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.875rem; font-weight: 600;
+    }
+    .route-stops {
+      margin-left: 0.5rem;
+      border-left: 2px dashed var(--border);
+      padding: 0.5rem 0 0.5rem 1.25rem;
+      font-size: 0.75rem; color: var(--muted);
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .route-stops p { margin: 0; }
+
+    /* -- Actions grid -- */
+    .actions-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem; margin-bottom: 1.5rem;
+    }
+    .action-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      padding: 1rem; border-radius: var(--radius);
+      border: none; cursor: pointer;
+      font-size: 0.75rem; font-weight: 700;
+      transition: transform 0.1s;
+    }
+    .action-btn:active { transform: scale(0.95); }
+    .action-primary { background: var(--primary); color: var(--primary-fg); }
+    .action-default { background: var(--card); border: 1px solid var(--border); color: var(--fg); }
+
+    /* -- Members section -- */
+    .section-header {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.875rem; font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .members-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .member-card {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--card);
+      width: 100%; text-align: left; cursor: pointer;
+      transition: transform 0.1s;
+      opacity: 0;
+      animation: slideIn 0.3s ease forwards;
+    }
+    .member-card:active { transform: scale(0.98); }
+
+    /* Avatar with status dot */
+    .avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--muted-bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.875rem; font-weight: 700; color: var(--fg);
+      position: relative; flex-shrink: 0;
+    }
+    .status-dot {
+      position: absolute; bottom: -2px; right: -2px;
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid var(--card);
+    }
+    .dot-active  { background: var(--fg); }
+    .dot-riding  { background: var(--fg); }
+    .dot-offline { background: var(--muted-bg); border-color: var(--border); }
+
+    .member-info { flex: 1; min-width: 0; }
+    .member-name {
+      font-size: 0.875rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
+    }
+    .member-bike { font-size: 0.75rem; color: var(--muted); margin: 0.1rem 0 0; }
+    .member-status-label {
+      font-size: 0.625rem; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; flex-shrink: 0;
+    }
+    .chevron { color: var(--muted); flex-shrink: 0; }
+
+    /* -- Animations -- */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
