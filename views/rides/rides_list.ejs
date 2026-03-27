@@ -1,143 +1,58 @@
 <% layout("/layout/boilerplate.ejs") %>
-  
-<body>
- 
-<div class="page-wrap">
- 
-  <!-- Header -->
-  <div class="page-header">
-    <div>
-      <p class="hdr-sub">Good morning 👋</p>
-      <h1 class="hdr-title">All Rides</h1>
+  <body>
+  <!-- ── Top Nav ─────────────────────────────────── -->
+  <div class="top-nav">
+    <div class="d-flex align-items-center gap-2">
+      <a href="#" class="nav-icon-btn"><i class="bi bi-arrow-left"></i></a>
+      <h1>My Rides</h1>
     </div>
-    <div class="avatar"><i class="bi bi-person-fill"></i></div>
-  </div>
- 
-  <!-- Stats -->
-  <div class="stats-row">
-    <div class="stat-box"><span class="sn">12</span><span class="sl">Total</span></div>
-    <div class="stat-box hot"><span class="sn">3</span><span class="sl">Upcoming</span></div>
-    <div class="stat-box"><span class="sn">88</span><span class="sl">Riders</span></div>
-  </div>
- 
-  <!-- Tabs -->
-  <div class="tabs-wrap">
-    <button class="tab active">All</button>
-    <button class="tab">Upcoming</button>
-    <button class="tab">Completed</button>
-  </div>
- 
-  <p class="sec-label">Recent Rides</p>
- 
-  <!-- Card 1 -->
-  <div class="ride-card">
-    <div class="card-top">
-      <div><div class="ride-name">First Ride</div><div class="ride-id">#RIDE-001</div></div>
-      <span class="status-pill done">✓ Done</span>
-    </div>
-    <div class="route-block">
-      <div class="connector"></div>
-      <div class="route-stop">
-        <div class="stop-dot o"></div>
-        <div><div class="stop-lbl">From</div><div class="stop-name">City Center</div></div>
-      </div>
-      <div class="route-stop">
-        <div class="stop-dot d"></div>
-        <div><div class="stop-lbl">To</div><div class="stop-name">Airport Terminal 2</div></div>
-      </div>
-    </div>
-    <div class="card-meta">
-      <div class="chips">
-        <span class="chip"><i class="bi bi-calendar3"></i> Mon, 24 Mar</span>
-        <span class="chip"><i class="bi bi-clock"></i> 08:30 AM</span>
-        <span class="riders-chip"><i class="bi bi-people-fill"></i> 88</span>
-      </div>
-      <a href="#" class="arrow-btn"><i class="bi bi-arrow-right"></i></a>
+    <div class="d-flex align-items-center gap-2">
+      <button class="nav-icon-btn" id="filterBtn" title="Filter"><i class="bi bi-sliders"></i></button>
     </div>
   </div>
  
-  <!-- Card 2 -->
-  <div class="ride-card">
-    <div class="card-top">
-      <div><div class="ride-name">Second Ride</div><div class="ride-id">#RIDE-002</div></div>
-      <span class="status-pill soon">⏳ Soon</span>
+  <!-- ── Main Content ────────────────────────────── -->
+  <div class="container-fluid px-3 pt-3 pb-5" style="max-width:520px; margin:0 auto;">
+ 
+    <!-- Search -->
+    <div class="search-wrap mb-3">
+      <i class="bi bi-search"></i>
+      <input class="search-input" id="searchInput" type="text" placeholder="Search rides…" autocomplete="off"/>
     </div>
-    <div class="route-block">
-      <div class="connector"></div>
-      <div class="route-stop">
-        <div class="stop-dot o"></div>
-        <div><div class="stop-lbl">From</div><div class="stop-name">Hotel Grand</div></div>
-      </div>
-      <div class="route-stop">
-        <div class="stop-dot d"></div>
-        <div><div class="stop-lbl">To</div><div class="stop-name">Convention Hall</div></div>
-      </div>
+ 
+    <!-- Tab Switcher -->
+    <div class="tab-switcher mb-4" id="tabSwitcher">
+      <button class="tab-item active" data-tab="upcoming">
+        Upcoming <span class="count-chip" id="upcomingCount">0</span>
+      </button>
+      <button class="tab-item" data-tab="completed">
+        Completed <span class="count-chip" id="completedCount">0</span>
+      </button>
     </div>
-    <div class="card-meta">
-      <div class="chips">
-        <span class="chip"><i class="bi bi-calendar3"></i> Wed, 26 Mar</span>
-        <span class="chip"><i class="bi bi-clock"></i> 02:15 PM</span>
-        <span class="riders-chip"><i class="bi bi-people-fill"></i> 88</span>
-      </div>
-      <a href="#" class="arrow-btn"><i class="bi bi-arrow-right"></i></a>
+ 
+    <!-- ── UPCOMING TAB ─────────────────────────── -->
+    <div class="tab-content-pane active" id="pane-upcoming">
+      <div class="section-label mb-2">This Week</div>
+      <div class="d-flex flex-column gap-2" id="upcoming-this-week"></div>
+ 
+      <div class="section-label mt-4 mb-2">Later</div>
+      <div class="d-flex flex-column gap-2" id="upcoming-later"></div>
+ 
+      <div class="no-result d-none" id="upcoming-no-result">No upcoming rides found</div>
     </div>
+ 
+    <!-- ── COMPLETED TAB ─────────────────────────── -->
+    <div class="tab-content-pane" id="pane-completed">
+      <div class="section-label mb-2">Recent</div>
+      <div class="d-flex flex-column gap-2" id="completed-list"></div>
+      <div class="no-result d-none" id="completed-no-result">No completed rides found</div>
+    </div>
+ 
   </div>
  
-  <!-- Card 3 -->
-  <div class="ride-card">
-    <div class="card-top">
-      <div><div class="ride-name">Third Ride</div><div class="ride-id">#RIDE-003</div></div>
-      <span class="status-pill soon">⏳ Soon</span>
-    </div>
-    <div class="route-block">
-      <div class="connector"></div>
-      <div class="route-stop">
-        <div class="stop-dot o"></div>
-        <div><div class="stop-lbl">From</div><div class="stop-name">University Gate</div></div>
-      </div>
-      <div class="route-stop">
-        <div class="stop-dot d"></div>
-        <div><div class="stop-lbl">To</div><div class="stop-name">Stadium South</div></div>
-      </div>
-    </div>
-    <div class="card-meta">
-      <div class="chips">
-        <span class="chip"><i class="bi bi-calendar3"></i> Fri, 28 Mar</span>
-        <span class="chip"><i class="bi bi-clock"></i> 10:00 AM</span>
-        <span class="riders-chip"><i class="bi bi-people-fill"></i> 56</span>
-      </div>
-      <a href="#" class="arrow-btn"><i class="bi bi-arrow-right"></i></a>
-    </div>
-  </div>
+  <!-- FAB -->
+  <!-- <button class="plusbtn" title="New Ride"><i class="bi bi-plus"></i></button> -->
  
-  <!-- Card 4 -->
-  <div class="ride-card">
-    <div class="card-top">
-      <div><div class="ride-name">Fourth Ride</div><div class="ride-id">#RIDE-004</div></div>
-      <span class="status-pill done">✓ Done</span>
-    </div>
-    <div class="route-block">
-      <div class="connector"></div>
-      <div class="route-stop">
-        <div class="stop-dot o"></div>
-        <div><div class="stop-lbl">From</div><div class="stop-name">Beach Road</div></div>
-      </div>
-      <div class="route-stop">
-        <div class="stop-dot d"></div>
-        <div><div class="stop-lbl">To</div><div class="stop-name">Central Park</div></div>
-      </div>
-    </div>
-    <div class="card-meta">
-      <div class="chips">
-        <span class="chip"><i class="bi bi-calendar3"></i> Sun, 30 Mar</span>
-        <span class="chip"><i class="bi bi-clock"></i> 06:45 PM</span>
-        <span class="riders-chip"><i class="bi bi-people-fill"></i> 34</span>
-      </div>
-      <a href="#" class="arrow-btn"><i class="bi bi-arrow-right"></i></a>
-    </div>
-  </div>
- 
-</div>
-
+  <script src="/js/rides_list.js"></script>
 </body>
 

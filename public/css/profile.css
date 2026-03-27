@@ -40,7 +40,7 @@
       display: flex; align-items: center; justify-content: center;
       margin-bottom: 1rem;
     }
-    .member-name {
+    .profilemember-name {
       font-size: 1.25rem; font-weight: 800; margin: 0;
     }
     .role-row {

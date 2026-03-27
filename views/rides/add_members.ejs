@@ -39,7 +39,7 @@
     <!-- SEARCH RESULT -->
     <div id="search-result">
       <div class="result-card">
-        <div class="mem-avatar av-3" id="result-avatar">A</div>
+        <div class="mem-avatar avatar av-3" id="result-avatar">A</div>
         <div class="result-info">
           <div class="result-name" id="result-name">—</div>
           <div class="result-phone" id="result-phone">—</div>
@@ -70,7 +70,7 @@
       <!-- Admin (always present, cannot be removed) -->
        <% for(let m of data) { %>
         <div class="member-item" id="admin-item">
-          <div class="mem-avatar av-1 online">
+          <div class="mem-avatar avatar av-1 online">
             <%= m.userId.firstname[0].toUpperCase() %>
           </div>
           <div class="mem-info">
@@ -82,7 +82,7 @@
             </div>
           </div>
           <div class="mem-actions">
-            <span class="role-badge role-admin">
+            <span class="role-badge <%= (m.userId._id.toString() === m.rideId.adminId.toString()) ? 'role-admin' : 'role-member' %>">
               <% if(m.userId._id.toString() === m.rideId.adminId.toString()) { %>
                 <%= "Admin" %>
               <% }  else { %>

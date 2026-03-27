@@ -73,21 +73,34 @@ body {
 }
 
 .page .brand-bar {
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  color: var(--text-strong);
-  margin-bottom: var(--sp-6);
-  margin-left: 2px;
+  width: fit-content;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-avatar);
+  margin: 0 0 var(--sp-4);
+  margin-left: 3px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 /* ── HEADER ROW ── */
 .page .header-row {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
   margin-bottom: var(--sp-8);
+  padding: var(--sp-4);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background:
+    radial-gradient(circle at 85% 15%, rgba(233, 69, 96, 0.13), transparent 42%),
+    linear-gradient(145deg, #ffffff 0%, #f8faff 100%);
+  box-shadow: var(--shadow-md);
 }
 
 .page .avatar-trigger {
@@ -96,24 +109,30 @@ body {
   padding: 0;
   display: flex;
   align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
   cursor: pointer;
-  transition: opacity var(--dur-fast) ease;
+  transition: transform var(--dur-fast) var(--ease-std), opacity var(--dur-fast) ease;
 }
 
-.page .avatar-trigger:hover { opacity: 0.85; }
+.page .avatar-trigger:hover {
+  opacity: 0.96;
+  transform: translateY(-1px);
+}
 
 .page .avatar-circle {
-  width: 76px;
-  height: 76px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
-  font-size: 2.1rem;
+  font-size: 1.78rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--brand-avatar);
+  background: linear-gradient(145deg, #e94560 0%, #f26980 100%);
   color: #ffffff;
   flex-shrink: 0;
+  box-shadow: 0 10px 22px rgba(233, 69, 96, 0.3);
 }
 
 .greeting-text {
@@ -124,17 +143,24 @@ body {
 
 .page .greeting-sub {
   margin: 0;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-strong);
+  font-size: 0.77rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .page .greeting-name {
-  margin: 2px 0 0;
-  font-size: 1.55rem;
-  font-weight: 500;
+  margin: 3px 0 0;
+  max-width: 220px;
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   color: var(--text-strong);
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── STATS GRID ── */
@@ -235,6 +261,7 @@ body {
   padding: var(--sp-4);
   text-align: left;
   cursor: pointer;
+  width: 100%;
   transition: transform var(--dur-fast) var(--ease-std), box-shadow var(--dur-fast) ease, border-color var(--dur-fast) ease;
 }
 
@@ -325,12 +352,12 @@ body {
   margin: 0;
   font-size: 0.85rem;
   color: var(--text-muted);
-}
+} 
 
 /* ── FAB ── */
-.fab {
+.plusbtn {
   position: fixed;
-  bottom: calc(28px + env(safe-area-inset-bottom));
+  bottom: calc(5rem + env(safe-area-inset-bottom));
   right: 24px;
   width: 60px;
   height: 60px;
@@ -347,8 +374,8 @@ body {
   z-index: 100;
   font-size: 1.5rem;
 }
-.fab:hover { transform: scale(1.05) translateY(-2px); box-shadow: 0 14px 30px rgba(233, 69, 96, 0.35); }
-.fab:active { transform: scale(0.95); }
+.plusbtn:hover { transform: scale(1.05) translateY(-2px); box-shadow: 0 14px 30px rgba(233, 69, 96, 0.35); }
+.plusbtn:active { transform: scale(0.95); }
 
 
 /* ============================================================
@@ -394,6 +421,12 @@ body {
   transform: translateX(0);
 }
 
+.drawer-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
 /* Drawer Header */
 .drawer-header {
   display: flex;
@@ -430,46 +463,59 @@ body {
   flex-direction: column;
   align-items: center;
   gap: var(--sp-2);
-  padding-bottom: var(--sp-5);
-  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+  border: 1px solid #e9edf7;
+  border-radius: 20px;
+  padding: var(--sp-5) var(--sp-4);
+  background:
+    radial-gradient(circle at 78% 18%, rgba(233, 69, 96, 0.13), transparent 45%),
+    linear-gradient(160deg, #ffffff 0%, #f8faff 100%);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
 }
 .drawer .drawer-avatar {
-  width: 86px;
-  height: 86px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-  font-size: 2.25rem;
-  font-weight: 700;
+  font-size: 2.1rem;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--brand-avatar);
+  background: linear-gradient(145deg, #e94560 0%, #f46f86 100%);
   color: #fff;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: var(--sp-1);
+  box-shadow: 0 14px 28px rgba(233, 69, 96, 0.28);
+  margin-bottom: 2px;
 }
 .drawer .drawer-name {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: 700;
+  margin: 2px 0 0;
+  font-size: 1.32rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   color: var(--text-strong);
+  line-height: 1.2;
 }
 .drawer .drawer-role {
   display: flex;
   align-items: center;
-  color: var(--text-strong);
-  font-size: 0.75rem;
+  gap: 6px;
+  color: #7d1d2f;
+  font-size: 0.7rem;
   font-weight: 700;
-  background: var(--icon-bg);
-  padding: 5px 14px;
+  background: rgba(233, 69, 96, 0.12);
+  border: 1px solid rgba(233, 69, 96, 0.22);
+  padding: 6px 12px;
   border-radius: var(--radius-full);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 4px;
+  letter-spacing: 0.07em;
+  margin-top: 6px;
 }
 .drawer .drawer-email {
-  margin: 0;
+  margin: 6px 0 0;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.84rem;
+  font-weight: 500;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 /* Mini Stats */
@@ -556,4 +602,21 @@ body {
 .drawer .btn-primary-custom:active { 
   transform: scale(0.98); 
   box-shadow: 0 4px 12px rgba(233, 69, 96, 0.2); 
+}
+
+@media (max-width: 420px) {
+  .page .header-row {
+    padding: 12px;
+  }
+
+  .page .avatar-circle {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+
+  .page .greeting-name {
+    max-width: 168px;
+    font-size: 1.12rem;
+  }
 }

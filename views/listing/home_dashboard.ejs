@@ -76,19 +76,19 @@
   </div>
 
   <!-- FAB -->
-  <button style="border: none;" class="fab" onclick="window.location.href='/ridesync/createride'" aria-label="Create new ride">
+  <button style="border: none;" class=" plusbtn" onclick="window.location.href='/ridesync/createride'" aria-label="Create new ride">
     <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
 
   <!-- Drawer -->
   <div class="drawer-overlay" id="drawer-overlay"></div>
   <div class="drawer" id="profile-drawer" role="dialog" aria-label="Profile">
-    <div style="display:flex;align-items:center;justify-content:space-between">
+    <div class="drawer-header">
       <p class="drawer-title">Profile</p>
-      <button id="close-drawer" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.25rem;">✕</button>
+      <button id="close-drawer">✕</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:1rem">
-      <div style="text-align:center">
+    <div class="drawer-content">
+      <div class="drawer-profile">
         <div class="drawer-avatar" id="drawer-avatar">
           <%= (data.firstname && data.lastname ? data.firstname[0].toUpperCase() + data.lastname[0].toUpperCase() : data.username[0].toUpperCase() )%>
         </div>
@@ -112,7 +112,7 @@
           <%= members %>
         </p><p class="stat-mini-lbl">Total Members</p></div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:0.5rem">
+      <div class="drawer-info-list">
         <div class="info-row"><p class="info-row-label">Vehical</p><p class="info-row-val" id="drawer-bike">
           <%= data.vehical || "..." %>
         </p></div>
@@ -121,6 +121,7 @@
         </p></div>
       </div>
       <button class="btn-primary-custom" onclick="window.location.href='/ridesync/profile'">View Full Profile</button>
+      <div class="adjstdrawer" style="height: 3rem;width: 100%;"></div>
     </div>
   </div>
   <!-- <script src="/js/home_dashboard.js"></script> -->
