@@ -1,5 +1,5 @@
 <% layout("/layout/boilerplate.ejs") %>
-  <body>
+<body>
   <!-- ── Top Nav ─────────────────────────────────── -->
   <div class="top-nav">
     <div class="d-flex align-items-center gap-2">
@@ -12,7 +12,7 @@
   </div>
  
   <!-- ── Main Content ────────────────────────────── -->
-  <div class="container-fluid px-3 pt-3 pb-5" style="max-width:520px; margin:0 auto;">
+  <div class="container-fluid px-3 pt-3 " style="max-width:520px; margin:0 auto;">
  
     <!-- Search -->
     <div class="search-wrap mb-3">
@@ -22,7 +22,10 @@
  
     <!-- Tab Switcher -->
     <div class="tab-switcher mb-4" id="tabSwitcher">
-      <button class="tab-item active" data-tab="upcoming">
+      <button class="tab-item active" data-tab="all">
+        All <span class="count-chip" id="upcomingCount">0</span>
+      </button>
+      <button class="tab-item " data-tab="upcoming">
         Upcoming <span class="count-chip" id="upcomingCount">0</span>
       </button>
       <button class="tab-item" data-tab="completed">
@@ -30,29 +33,57 @@
       </button>
     </div>
  
+  </div>
     <!-- ── UPCOMING TAB ─────────────────────────── -->
     <div class="tab-content-pane active" id="pane-upcoming">
-      <div class="section-label mb-2">This Week</div>
-      <div class="d-flex flex-column gap-2" id="upcoming-this-week"></div>
- 
-      <div class="section-label mt-4 mb-2">Later</div>
-      <div class="d-flex flex-column gap-2" id="upcoming-later"></div>
- 
+      <!-- <div class="section-label mb-2">This Week</div> -->
+      <% for(let rides of data) { %>
+        <div class="d-flex flex-column gap-2" id="upcoming-this-week">
+          <a href="/ridesync/rideroom/<%=rides.rideId._id%>" class="mb-2 ride-card" data-id="${ride.id}" data-name="${ride.name.toLowerCase()}">
+            <div class="card-icon ${isCompleted ? 'completed' : ''}">
+              <i class="bi bi-geo-alt-fill"></i>
+            </div>
+            <div class="card-body-inner">
+              <div class="card-title">
+                <%= rides.rideId.ridename %>
+              </div>
+              <div class="card-meta">
+                <span>
+                  <%= new Date(rides.rideId.date).toLocaleString('en-IN', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) %>
+                </span>
+                <span class="dot"></span>
+                <span><%= rides.rideId.totalMembers + "riders" %></span>
+                <span class="dot"></span>
+                <span>5Km</span>
+              </div>
+              <div class="mt-1">
+                <span class="ride-badge ${isCompleted ? 'badge-completed' : 'badge-upcoming'}">
+                  <span class="badge-dot"></span>
+                  Upcoming
+                </span>
+              </div>
+            </div>
+            <i class="bi bi-chevron-right card-chevron"></i>
+          </a>
+        </div>
+      <% } %>
       <div class="no-result d-none" id="upcoming-no-result">No upcoming rides found</div>
     </div>
  
     <!-- ── COMPLETED TAB ─────────────────────────── -->
-    <div class="tab-content-pane" id="pane-completed">
+    <!-- <div class="tab-content-pane" id="pane-completed">
       <div class="section-label mb-2">Recent</div>
       <div class="d-flex flex-column gap-2" id="completed-list"></div>
       <div class="no-result d-none" id="completed-no-result">No completed rides found</div>
-    </div>
+    </div> -->
  
-  </div>
  
-  <!-- FAB -->
-  <!-- <button class="plusbtn" title="New Ride"><i class="bi bi-plus"></i></button> -->
- 
-  <script src="/js/rides_list.js"></script>
+  <script src="/js/ride_list.js"></script>
 </body>
 

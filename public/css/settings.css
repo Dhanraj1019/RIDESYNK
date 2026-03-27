@@ -283,3 +283,198 @@
       border: none !important;
     }
     .toast-success { background: #12121A; color: #fff; }
+
+    /* ============================================================
+       Settings Premium Refinement
+       CSS-only override, structure-safe
+    ============================================================ */
+
+    :root {
+      --primary: #5B4CFA;
+      --primary-soft: #8B7CFF;
+
+      --accent: #FF5A7A;
+
+      --bg: #F5F6FA;
+      --card: #FFFFFF;
+
+      --text-dark: #1F2937;
+      --text-light: #6B7280;
+
+      --border: #E5E7EB;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-dark);
+    }
+
+    .top-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 6px 20px rgba(17, 24, 39, 0.04);
+    }
+
+    .top-bar h1 {
+      color: var(--text-dark);
+    }
+
+    .back-btn {
+      border-color: var(--border);
+      color: var(--text-dark);
+      transition: all 0.2s ease;
+    }
+
+    .back-btn:hover {
+      background: #f7f7ff;
+      transform: translateY(-2px);
+    }
+
+    .back-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Avatar theme alignment */
+    .avatar {
+      background: linear-gradient(135deg, #5B4CFA, #FF5A7A);
+      color: #fff;
+      font-weight: 600;
+      border-radius: 50%;
+      box-shadow: 0 10px 22px rgba(91, 76, 250, 0.28);
+    }
+
+    .profile-card,
+    .menu-group,
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+    }
+
+    .profile-card:hover,
+    .menu-group:hover,
+    .card:hover {
+      transform: translateY(-2px);
+    }
+
+    .profile-name,
+    .item-title {
+      color: var(--text-dark);
+    }
+
+    .profile-meta,
+    .item-sub,
+    .item-end,
+    .version-tag {
+      color: var(--text-light);
+    }
+
+    /* Admin badge */
+    .badge-admin {
+      background: rgba(91, 76, 250, 0.1);
+      color: #5B4CFA;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+
+    /* Typography hierarchy */
+    .section-title,
+    .section-label {
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #6B7280;
+      font-weight: 700;
+    }
+
+    /* Icon consistency */
+    .item-icon {
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .icon-blue {
+      background: rgba(91, 76, 250, 0.1);
+      color: #5B4CFA;
+    }
+
+    .icon-green {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22C55E;
+    }
+
+    .icon-purple {
+      background: rgba(139, 92, 246, 0.1);
+      color: #8B5CF6;
+    }
+
+    .icon-orange,
+    .icon-pink,
+    .icon-teal,
+    .icon-slate {
+      background: rgba(91, 76, 250, 0.08);
+      color: #5B4CFA;
+    }
+
+    /* Toggle modernization */
+    .toggle,
+    .form-check-input {
+      background: #E5E7EB;
+      border-color: #E5E7EB;
+      transition: all 0.2s ease;
+    }
+
+    .toggle.active,
+    .form-check-input:checked {
+      background: linear-gradient(135deg, #5B4CFA, #8B7CFF);
+      border-color: #7a6bff;
+      background-image: linear-gradient(135deg, #5B4CFA, #8B7CFF);
+    }
+
+    .form-check-input:focus {
+      box-shadow: 0 0 0 3px rgba(91, 76, 250, 0.18);
+    }
+
+    /* Global interaction polish */
+    .menu-item,
+    .signout-btn,
+    .delete-btn,
+    .btn-brand,
+    .btn-danger-soft,
+    .profile-card {
+      transition: all 0.2s ease;
+    }
+
+    .menu-item:hover,
+    .signout-btn:hover,
+    .delete-btn:hover,
+    .btn-brand:hover,
+    .btn-danger-soft:hover {
+      transform: translateY(-2px);
+    }
+
+    .menu-item:active,
+    .signout-btn:active,
+    .delete-btn:active,
+    .btn-brand:active,
+    .btn-danger-soft:active {
+      transform: scale(0.97);
+    }
+
+    .menu-item {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .btn-brand {
+      background: linear-gradient(135deg, #5B4CFA, #8B7CFF);
+      color: #fff;
+      border: none;
+      box-shadow: 0 10px 24px rgba(91, 76, 250, 0.26);
+    }
+
+    .btn-brand:hover {
+      color: #fff;
+      box-shadow: 0 14px 28px rgba(91, 76, 250, 0.32);
+    }

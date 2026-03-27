@@ -1,45 +1,41 @@
+let confirmed = false;
+let resetTimer = null;
 
+function handleConfirm(btn) {
+  if (!confirmed) {
+    // First click — ask to confirm
+    confirmed = true;
+    btn.textContent = '⚠ Tap again to confirm';
+    btn.style.background = '#E24B4A';
+    btn.style.borderColor = '#E24B4A';
+    btn.style.color = '#ffffff';
 
-  const members = [
-    { id: 1, name: "James Rodriguez", status: "active",  bike: "Royal Enfield 650" },
-    { id: 2, name: "Mike Chen",        status: "riding",  bike: "Kawasaki Z900"     },
-    { id: 3, name: "Sarah Mitchell",   status: "offline", bike: "Honda CB350"       },
-    { id: 4, name: "Priya Patel",      status: "active",  bike: "BMW G310R"         },
-  ];
+    // Auto-reset after 3 seconds if user doesn't confirm
+    resetTimer = setTimeout(() => {
+      confirmed = false;
+      btn.textContent = 'Cancel ride';
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 3000);
 
-  const statusConfig = {
-    active:  { label: "Active",  dotClass: "dot-active"  },
-    riding:  { label: "Riding",  dotClass: "dot-riding"  },
-    offline: { label: "Offline", dotClass: "dot-offline" },
-  };
+  } else {
+    // Second click — confirmed!
+    clearTimeout(resetTimer);
+    confirmed = false;
+    btn.textContent = '✓ Cancelled';
+    btn.style.background = '#dcfce7';
+    btn.style.borderColor = '#86efac';
+    btn.style.color = '#15803d';
+    btn.disabled = true;
 
-  const chevronSVG = `<svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-    stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
-
-  const list = document.getElementById("members-list");
-
-  members.forEach((m, i) => {
-    const cfg     = statusConfig[m.status];
-    const initial = m.name.charAt(0).toUpperCase();
-
-    const btn = document.createElement("button");
-    btn.className = "member-card";
-    btn.style.animationDelay = `${i * 0.04}s`;
-    btn.onclick = () => window.location.href = "/member-detail";
-
-    btn.innerHTML = `
-      <div class="avatar">
-        ${initial}
-        <span class="status-dot ${cfg.dotClass}"></span>
-      </div>
-      <div class="member-info">
-        <p class="member-name">${m.name}</p>
-        <p class="member-bike">${m.bike}</p>
-      </div>
-      <span class="member-status-label">${cfg.label}</span>
-      ${chevronSVG}
-    `;
-
-    list.appendChild(btn);
-  });
+    // Reset button after 2 seconds
+    setTimeout(() => {
+      btn.textContent = 'Cancel ride';
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      btn.disabled = false;
+    }, 2000);
+  }
+}

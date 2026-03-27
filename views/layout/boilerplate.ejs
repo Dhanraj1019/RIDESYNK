@@ -10,23 +10,59 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" />
+
+        <%
+            const _u = (originalUrl || '').toLowerCase();
+            const _isLogin = _u.endsWith('/login');
+            const _isSignupFlow = _u.endsWith('/signup');
+            const _isHome = _u.endsWith('/home') || _u.endsWith('/saveprofile');
+            const _isCreateRide = _u.endsWith('/createride');
+            const _isRideRoom = /^\/ridesync\/rideroom\/[^/]+$/.test(_u);
+            const _isLiveTracking = /^\/ridesync\/rideroom\/[^/]+\/live-tracking$/.test(_u);
+            const _isAddMembers = /^\/ridesync\/rideroom\/[^/]+\/add-members$/.test(_u);
+            const _isRidesList = /^\/ridesync\/[^/]+\/rides$/.test(_u);
+            const _isProfile = _u.endsWith('/profile');
+            const _isSettings = _u.endsWith('/settings');
+            const _is404 = _u.includes('/404');
+        %>
     
     <link href="/css/index.css" rel="stylesheet">
-    <link href="/css/login_screen.css" rel="stylesheet">
-    <link href="/css/complete_profile.css" rel="stylesheet">
-    <link href="/css/home_dashboard.css" rel="stylesheet">
-    <link href="/css/profile.css" rel="stylesheet">
-    <link href="/css/ride_room.css" rel="stylesheet">
-    <link href="/css/create_ride.css" rel="stylesheet">
-    <!-- <link href="/css/sos_alerts.css" rel="stylesheet"> -->
-    <link href="/css/map_page.css" rel="stylesheet">
-    <link href="/css/add_members.css" rel="stylesheet">
-    <link href="/css/noride.css" rel="stylesheet">
-    <link href="/css/ride_list.css" rel="stylesheet">
-    <link href="/css/404.css" rel="stylesheet">
-    <link href="/css/settings.css" rel="stylesheet">
+        <% if (_isLogin || _isSignupFlow) { %>
+            <link href="/css/login_screen.css" rel="stylesheet">
+        <% } %>
+        <% if (_isSignupFlow) { %>
+            <link href="/css/complete_profile.css" rel="stylesheet">
+        <% } %>
+        <% if (_isHome) { %>
+            <link href="/css/home_dashboard.css" rel="stylesheet">
+        <% } %>
+        <% if (_isProfile) { %>
+            <link href="/css/profile.css" rel="stylesheet">
+        <% } %>
+        <% if (_isRideRoom) { %>
+            <link href="/css/ride_room.css" rel="stylesheet">
+        <% } %>
+        <% if (_isCreateRide) { %>
+            <link href="/css/create_ride.css" rel="stylesheet">
+        <% } %>
+        <% if (_isLiveTracking) { %>
+            <link href="/css/map_page.css" rel="stylesheet">
+        <% } %>
+        <% if (_isAddMembers) { %>
+            <link href="/css/add_members.css" rel="stylesheet">
+        <% } %>
+        <% if (_isRidesList) { %>
+            <link href="/css/noride.css" rel="stylesheet">
+            <link href="/css/ride_list.css" rel="stylesheet">
+        <% } %>
+        <% if (_is404) { %>
+            <link href="/css/404.css" rel="stylesheet">
+        <% } %>
+        <% if (_isSettings) { %>
+            <link href="/css/settings.css" rel="stylesheet">
+        <% } %>
     <link href="/css/footer.css" rel="stylesheet">
-    
+    <link href="/css/404.css" rel="stylesheet">
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 </head>

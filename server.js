@@ -384,6 +384,7 @@ app.post("/ridesync/createride",isAuthenticated,async (req,res)=>{
         time:ride.time,
         sorce:ride.sorce,
         destination:ride.destination,
+        // rideDateTime : combineDateTime(ride.date, ride.time),
         sorceLocation: {
           type:'Point',
           coordinates: sorcelocation.coordinates

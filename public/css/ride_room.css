@@ -1,6 +1,7 @@
 
     /* -- Design tokens -- */
     :root {
+      --brand-avatar:#e94560;    
       --primary: #5B4CFA;
       --primary-soft: #8B7CFF;
       --accent: #FF5A7A;
@@ -204,3 +205,41 @@
       from { opacity: 0; transform: translateX(-10px); }
       to   { opacity: 1; transform: translateX(0); }
     }
+
+
+
+.btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 160px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  outline: none;
+  position: fixed;
+  right: 1rem;
+  bottom: 6rem;
+}
+
+.btn-cancel:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.btn-cancel:active {
+  transform: scale(0.97);
+}
+
+.btn-cancel:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
