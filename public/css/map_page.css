@@ -2,6 +2,7 @@
 
 :root {
   --map-nav-h: 64px;
+  --brand-avatar:#e94560;
 }
 
 body.live-tracking-page {
@@ -777,8 +778,8 @@ body.live-tracking-page {
   height: 46px;
   border-radius: 16px;
   border: 0;
-  color: #fff;
-  background: var(--cta-gradient);
+  color: blue;
+  background: var(--brand-avatar);
   box-shadow: 0 10px 18px rgba(83, 91, 246, 0.32);
   display: inline-flex;
   align-items: center;

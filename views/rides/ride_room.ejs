@@ -23,7 +23,7 @@
 
   <!-- Route Summary -->
   <% const isRideAdmin = curruser && data && data.adminId && data.adminId.toString() === curruser._id.toString(); %>
-  <div class="route-card" id="routeCard">
+  <div class="route-card" id="routeCard" data-rideid="<%= data._id %>">
     <% if (isRideAdmin) { %>
       <button class="route-edit-btn" id="routeEditBtn" type="button" aria-label="Edit source and destination">
         <i class="bi bi-pencil-square"></i>
@@ -55,12 +55,28 @@
       <div class="route-edit-mode d-none" id="routeEditMode">
         <div class="route-input-wrap">
           <label for="sourceInput" class="route-input-label">Source</label>
-          <input id="sourceInput" class="route-input" type="text" value="<%= data.sorce %>" autocomplete="off" />
+          <input
+            id="sourceInput"
+            class="route-input"
+            type="text"
+            value="<%= data.sorce %>"
+            data-lat="<%= data.sorceLocation && data.sorceLocation.coordinates ? data.sorceLocation.coordinates[1] : '' %>"
+            data-lng="<%= data.sorceLocation && data.sorceLocation.coordinates ? data.sorceLocation.coordinates[0] : '' %>"
+            autocomplete="off"
+          />
         </div>
 
         <div class="route-input-wrap">
           <label for="destinationInput" class="route-input-label">Destination</label>
-          <input id="destinationInput" class="route-input" type="text" value="<%= data.destination %>" autocomplete="off" />
+          <input
+            id="destinationInput"
+            class="route-input"
+            type="text"
+            value="<%= data.destination %>"
+            data-lat="<%= data.destinationLocation && data.destinationLocation.coordinates ? data.destinationLocation.coordinates[1] : '' %>"
+            data-lng="<%= data.destinationLocation && data.destinationLocation.coordinates ? data.destinationLocation.coordinates[0] : '' %>"
+            autocomplete="off"
+          />
         </div>
 
         <div class="route-edit-actions">

@@ -414,6 +414,69 @@ app.get("/ridesync/rideroom/:id", isAuthenticated,async (req,res)=>{
     res.render("rides/ride_room.ejs",{data,members});
 })
 
+app.patch("/ride/update-location/:rideId", isAuthenticated, async (req, res) => {
+    try {
+        const { rideId } = req.params;
+        const { sorce, destination, sorceLocation, destinationLocation } = req.body;
+
+        if (!mongoose.Types.ObjectId.isValid(rideId)) {
+            return res.status(400).json({ success: false, message: "Invalid ride id" });
+        }
+
+        if (!String(sorce || "").trim() || !String(destination || "").trim()) {
+            return res.status(400).json({ success: false, message: "sorce and destination are required" });
+        }
+
+        const parseNum = (value) => {
+            const n = Number(value);
+            return Number.isFinite(n) ? n : null;
+        };
+
+        const srcLat = parseNum(sorceLocation && sorceLocation.lat);
+        const srcLng = parseNum(sorceLocation && sorceLocation.lng);
+        const dstLat = parseNum(destinationLocation && destinationLocation.lat);
+        const dstLng = parseNum(destinationLocation && destinationLocation.lng);
+
+        if (
+            srcLat === null || srcLng === null || dstLat === null || dstLng === null ||
+            srcLat < -90 || srcLat > 90 || dstLat < -90 || dstLat > 90 ||
+            srcLng < -180 || srcLng > 180 || dstLng < -180 || dstLng > 180
+        ) {
+            return res.status(400).json({ success: false, message: "Invalid location coordinates" });
+        }
+
+        const ride = await Ride.findById(rideId);
+        if (!ride) {
+            return res.status(404).json({ success: false, message: "Ride not found" });
+        }
+
+        const isAdmin = req.user && ride.adminId.toString() === req.user._id.toString();
+        if (!isAdmin) {
+            return res.status(403).json({ success: false, message: "Only admin can update ride location" });
+        }
+
+        ride.sorce = String(sorce).trim();
+        ride.destination = String(destination).trim();
+        ride.sorceLocation = {
+            type: "Point",
+            coordinates: [srcLng, srcLat]
+        };
+        ride.destinationLocation = {
+            type: "Point",
+            coordinates: [dstLng, dstLat]
+        };
+
+        const updatedRide = await ride.save();
+
+        return res.status(200).json({
+            success: true,
+            ride: updatedRide
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+})
+
 
 app.get("/ridesync/rideroom/:id/live-tracking",isAuthenticated,async (req,res)=>{
     const {id} = req.params;

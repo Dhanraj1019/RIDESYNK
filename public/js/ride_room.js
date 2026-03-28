@@ -43,6 +43,7 @@ function handleConfirm(btn) {
 // this is new lines add by edit button
 
 document.addEventListener("DOMContentLoaded", () => {
+  const routeCard = document.getElementById("routeCard");
   const routeEditBtn = document.getElementById("routeEditBtn");
   const routeViewMode = document.getElementById("routeViewMode");
   const routeEditMode = document.getElementById("routeEditMode");
@@ -54,6 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const routeCancelBtn = document.getElementById("routeCancelBtn");
 
   if (
+    !routeCard ||
     !routeEditBtn ||
     !routeViewMode ||
     !routeEditMode ||
@@ -69,6 +71,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let originalSource = sourceText.textContent.trim();
   let originalDestination = destinationText.textContent.trim();
+  let originalSourceLocation = {
+    lat: sourceInput.dataset.lat,
+    lng: sourceInput.dataset.lng
+  };
+  let originalDestinationLocation = {
+    lat: destinationInput.dataset.lat,
+    lng: destinationInput.dataset.lng
+  };
+
+  function pickLocation(input, fallback) {
+    const lat = input.dataset.coordsLat || input.dataset.lat || fallback.lat;
+    const lng = input.dataset.coordsLng || input.dataset.lng || fallback.lng;
+
+    return {
+      lat: Number(lat),
+      lng: Number(lng)
+    };
+  }
 
   function setSaveButtonState() {
     const nextSource = sourceInput.value.trim();
@@ -100,11 +120,50 @@ document.addEventListener("DOMContentLoaded", () => {
     exitEditMode();
   });
 
-  routeSaveBtn.addEventListener("click", () => {
+  routeSaveBtn.addEventListener("click", async () => {
     const nextSource = sourceInput.value.trim();
     const nextDestination = destinationInput.value.trim();
+    const rideId = routeCard.dataset.rideid;
 
-    if (!nextSource || !nextDestination) {
+    if (!nextSource || !nextDestination || !rideId) {
+      setSaveButtonState();
+      return;
+    }
+
+    const sorceLocation = pickLocation(sourceInput, originalSourceLocation);
+    const destinationLocation = pickLocation(destinationInput, originalDestinationLocation);
+
+    if (
+      !Number.isFinite(sorceLocation.lat) ||
+      !Number.isFinite(sorceLocation.lng) ||
+      !Number.isFinite(destinationLocation.lat) ||
+      !Number.isFinite(destinationLocation.lng)
+    ) {
+      setSaveButtonState();
+      return;
+    }
+
+    routeSaveBtn.disabled = true;
+
+    try {
+      const response = await fetch(`/ride/update-location/${rideId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          sorce: nextSource,
+          destination: nextDestination,
+          sorceLocation,
+          destinationLocation
+        })
+      });
+
+      if (!response.ok) {
+        setSaveButtonState();
+        return;
+      }
+    } catch (error) {
       setSaveButtonState();
       return;
     }
@@ -114,8 +173,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     originalSource = nextSource;
     originalDestination = nextDestination;
+    originalSourceLocation = sorceLocation;
+    originalDestinationLocation = destinationLocation;
+
+    sourceInput.dataset.lat = String(sorceLocation.lat);
+    sourceInput.dataset.lng = String(sorceLocation.lng);
+    destinationInput.dataset.lat = String(destinationLocation.lat);
+    destinationInput.dataset.lng = String(destinationLocation.lng);
 
     exitEditMode();
+
+    window.location.href = `/ridesync/rideroom/${rideId}`;
   });
 
   sourceInput.addEventListener("input", setSaveButtonState);
@@ -329,13 +397,13 @@ function attachSearch(input, hiddenName = null) {
 document.addEventListener('DOMContentLoaded', () => {
 
   /* Start location input */
-  const sourceInput = document.querySelector('input[name="ride[sorce]"]');
+  const sourceInput = document.getElementById('sourceInput') || document.querySelector('input[name="ride[sorce]"]');
   if (sourceInput) {
     attachSearch(sourceInput, 'ride[sorcelocation]');
   }
 
   /* Destination input */
-  const destInput = document.querySelector('input[name="ride[destination]"]');
+  const destInput = document.getElementById('destinationInput') || document.querySelector('input[name="ride[destination]"]');
   if (destInput) {
     attachSearch(destInput, 'ride[destinationlocation]');
   }
@@ -345,6 +413,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const addStopBtn     = document.getElementById('add-stop-btn');
   let   stopCount      = 0;
   const MAX_STOPS      = 3;
+
+  if (!stopsContainer || !addStopBtn) {
+    return;
+  }
 
   addStopBtn.addEventListener('click', () => {
     if (stopCount >= MAX_STOPS) return;
