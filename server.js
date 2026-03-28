@@ -4,6 +4,7 @@ require('dotenv').config();
 const map_token=process.env.MAP_TOKEN;
 
 require("./cron/deleteUsers");
+require("./cron/ridecompeletion.js");
 const express=require("express");
 const app=express();
 const http=require("http");
@@ -36,6 +37,8 @@ const geocoder = mbxGeocoding({
 
 const {isAuthenticated}=require("./midelwear.js");
 const ExpressErrror=require("./utils/ExpressError.js");
+
+const ALLOW_MEMBER_CANCELLATION = true;
 
 
 
@@ -397,10 +400,6 @@ app.post("/ridesync/createride",isAuthenticated,async (req,res)=>{
     console.log(newRide);
     data=await newRide.save()
     await RideMember.insertOne({rideId:data._id,userId:req.user._id,role:"admin"})
-    // // admin.rides.push(newRide._id)
-    // // // data = await data.populate("members")
-    // // await admin.save();
-    // // // console.log(admin);
     req.flash("success","ride created...!")
     res.redirect(`/ridesync/rideroom/${data._id.toString()}`);
 })
@@ -449,13 +448,64 @@ app.post("/ridesync/rideroom/:id/add-members",isAuthenticated,async (req,res)=>{
 
 app.get("/ridesync/:id/rides",isAuthenticated,async (req,res)=>{
     const {id} = req.params;
-    const fulldata=await RideMember.find({userId:id}).populate("rideId");
+    if (req.user._id.toString() !== id.toString()) {
+        req.flash("error", "you are not authorized to view this ride list");
+        return res.redirect(`/ridesync/${req.user._id.toString()}/rides`);
+    }
+    const fulldata=await RideMember.find({userId:id}).select("rideId").populate("rideId");
     console.log(fulldata);
     if(fulldata.length){
-        return res.render("rides/rides_list.ejs",{data:fulldata})
+        return res.render("rides/rides_list.ejs",{data:fulldata,canMembersCancel:ALLOW_MEMBER_CANCELLATION})
     }
     else{
         return res.render("rides/noride.ejs");
+    }
+})
+
+
+app.post("/ridesync/cancel/:rideId", isAuthenticated, async (req, res, next) => {
+    try {
+        const { rideId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(rideId)) {
+            req.flash("error", "invalid ride id");
+            return res.redirect(req.get("Referrer") || `/ridesync/${req.user._id.toString()}/rides`);
+        }
+
+        const ride = await Ride.findById(rideId);
+        if (!ride) {
+            req.flash("error", "ride not found");
+            return res.redirect(req.get("Referrer") || `/ridesync/${req.user._id.toString()}/rides`);
+        }
+
+        const normalizedStatus = String(ride.status || "").trim().toLowerCase();
+        const canonicalStatus = normalizedStatus === "cancelled" ? "canceled" : normalizedStatus;
+
+        if (canonicalStatus !== "upcoming") {
+            return res.status(400).send("Ride cannot be canceled");
+        }
+
+        const isCreator = ride.adminId.toString() === req.user._id.toString();
+        const isActiveMember = await RideMember.exists({
+            rideId: ride._id,
+            userId: req.user._id,
+            status: "active",
+            isActive: true
+        });
+
+        const isAuthorized = isCreator || (ALLOW_MEMBER_CANCELLATION && Boolean(isActiveMember));
+        if (!isAuthorized) {
+            req.flash("error", "you are not authorized to cancel this ride");
+            return res.redirect(req.get("Referrer") || `/ridesync/${req.user._id.toString()}/rides`);
+        }
+
+        ride.status = "canceled";
+        await ride.save();
+
+        req.flash("success", "ride canceled successfully");
+        return res.redirect(req.get("Referrer") || `/ridesync/${req.user._id.toString()}/rides`);
+    } catch (err) {
+        return next(err);
     }
 })
 

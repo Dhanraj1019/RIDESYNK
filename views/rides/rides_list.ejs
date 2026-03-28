@@ -1,89 +1,111 @@
 <% layout("/layout/boilerplate.ejs") %>
-<body>
-  <!-- ── Top Nav ─────────────────────────────────── -->
+
+<main class="rides-list-page">
   <div class="top-nav">
     <div class="d-flex align-items-center gap-2">
-      <a href="#" class="nav-icon-btn"><i class="bi bi-arrow-left"></i></a>
+      <a onclick="history.back()" class="nav-icon-btn"><i class="bi bi-arrow-left"></i></a>
       <h1>My Rides</h1>
     </div>
     <div class="d-flex align-items-center gap-2">
       <button class="nav-icon-btn" id="filterBtn" title="Filter"><i class="bi bi-sliders"></i></button>
     </div>
   </div>
- 
-  <!-- ── Main Content ────────────────────────────── -->
-  <div class="container-fluid px-3 pt-3 " style="max-width:520px; margin:0 auto;">
- 
-    <!-- Search -->
+
+  <div class="container-fluid rides-list-shell px-3 pt-3">
     <div class="search-wrap mb-3">
       <i class="bi bi-search"></i>
-      <input class="search-input" id="searchInput" type="text" placeholder="Search rides…" autocomplete="off"/>
+      <input class="search-input" id="searchInput" type="text" placeholder="Search rides..." autocomplete="off" />
     </div>
- 
-    <!-- Tab Switcher -->
+
     <div class="tab-switcher mb-4" id="tabSwitcher">
       <button class="tab-item active" data-tab="all">
-        All <span class="count-chip" id="upcomingCount">0</span>
+        All <span class="count-chip" id="allCount">0</span>
       </button>
-      <button class="tab-item " data-tab="upcoming">
+      <button class="tab-item" data-tab="upcoming">
         Upcoming <span class="count-chip" id="upcomingCount">0</span>
       </button>
       <button class="tab-item" data-tab="completed">
         Completed <span class="count-chip" id="completedCount">0</span>
       </button>
+      <button class="tab-item" data-tab="canceled">
+        Canceled <span class="count-chip" id="canceledCount">0</span>
+      </button>
     </div>
- 
   </div>
-    <!-- ── UPCOMING TAB ─────────────────────────── -->
+  <div class="fixridelists" style="margin-top: 13rem;"></div>
+  <div class="rides-list-shell rides-list-content px-3">
     <div class="tab-content-pane active" id="pane-upcoming">
-      <!-- <div class="section-label mb-2">This Week</div> -->
-      <% for(let rides of data) { %>
-        <div class="d-flex flex-column gap-2" id="upcoming-this-week">
-          <a href="/ridesync/rideroom/<%=rides.rideId._id%>" class="mb-2 ride-card" data-id="${ride.id}" data-name="${ride.name.toLowerCase()}">
-            <div class="card-icon ${isCompleted ? 'completed' : ''}">
-              <i class="bi bi-geo-alt-fill"></i>
-            </div>
-            <div class="card-body-inner">
-              <div class="card-title">
-                <%= rides.rideId.ridename %>
+      <% for (let rides of data) { %>
+        <% const rawStatus = (rides.rideId.status || '').toString().trim().toLowerCase(); %>
+        <% const rideStatus = rawStatus === 'cancelled' ? 'canceled' : rawStatus; %>
+        <% const canCancelRide = rides.rideId.status === 'upcoming' && (canMembersCancel || rides.rideId.adminId.toString() === curruser._id.toString()); %>
+        <% const isCanceledRide = rideStatus === 'canceled'; %>
+        <div class="d-flex flex-column gap-2 upcoming-this-week">
+          <div
+            class="mb-2 ride-card <%= isCanceledRide ? 'is-canceled' : '' %>"
+            data-status="<%= rideStatus %>"
+            data-date="<%= new Date(rides.rideId.date).toISOString() %>"
+            data-disable-nav="<%= isCanceledRide ? 'true' : 'false' %>"
+            aria-disabled="<%= isCanceledRide ? 'true' : 'false' %>"
+          >
+            <a
+              href="<%= isCanceledRide ? '#' : '/ridesync/rideroom/' + rides.rideId._id %>"
+              class="ride-card-main"
+            >
+              <div class="card-icon">
+                <i class="bi bi-geo-alt-fill"></i>
               </div>
-              <div class="card-meta">
-                <span>
-                  <%= new Date(rides.rideId.date).toLocaleString('en-IN', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  }) %>
-                </span>
-                <span class="dot"></span>
-                <span><%= rides.rideId.totalMembers + "riders" %></span>
-                <span class="dot"></span>
-                <span>5Km</span>
+              <div class="card-body-inner">
+                <div class="card-title">
+                  <%= rides.rideId.ridename %>
+                </div>
+                <div class="card-meta">
+                  <span>
+                    <%= new Date(rides.rideId.date).toLocaleString('en-IN', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) %>
+                  </span>
+                  <span class="dot"></span>
+                  <span><%= rides.rideId.totalMembers %> riders</span>
+                  <span class="dot"></span>
+                  <span>5Km</span>
+                </div>
+                <div class="mt-1">
+                  <span class="ride-badge <%= rideStatus === 'completed' ? 'badge-completed' : rideStatus === 'canceled' ? 'badge-canceled' : 'badge-upcoming' %>">
+                    <span class="badge-dot"></span>
+                    <%= rideStatus %>
+                  </span>
+                </div>
               </div>
-              <div class="mt-1">
-                <span class="ride-badge ${isCompleted ? 'badge-completed' : 'badge-upcoming'}">
-                  <span class="badge-dot"></span>
-                  Upcoming
-                </span>
-              </div>
-            </div>
-            <i class="bi bi-chevron-right card-chevron"></i>
-          </a>
+              <i class="bi bi-chevron-right card-chevron"></i>
+            </a>
+
+            <% if (canCancelRide) { %>
+              <form action="/ridesync/cancel/<%= rides.rideId._id %>" method="POST" class="cancel-ride-form">
+                <button type="button" class="cancel-btn" data-rideid="<%= rides.rideId._id %>">Cancel Ride</button>
+              </form>
+            <% } %>
+          </div>
         </div>
       <% } %>
       <div class="no-result d-none" id="upcoming-no-result">No upcoming rides found</div>
     </div>
- 
-    <!-- ── COMPLETED TAB ─────────────────────────── -->
-    <!-- <div class="tab-content-pane" id="pane-completed">
-      <div class="section-label mb-2">Recent</div>
-      <div class="d-flex flex-column gap-2" id="completed-list"></div>
-      <div class="no-result d-none" id="completed-no-result">No completed rides found</div>
-    </div> -->
- 
- 
-  <script src="/js/ride_list.js"></script>
-</body>
+  </div>
 
+  <div id="cancelModal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cancelModalTitle">
+    <div class="modal-content" role="document">
+      <h3 id="cancelModalTitle">Cancel Ride</h3>
+      <p>Are you sure you want to cancel this ride?</p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="btn-danger" type="button">Yes, Cancel</button>
+        <button id="closeModal" class="btn-secondary" type="button">No</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/rides_list.js"></script>
+</main>

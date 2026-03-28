@@ -26,11 +26,27 @@
       color: var(--text-strong);
       min-height: 100vh;
     }
+
+    .rides-list-page {
+      min-height: 100vh;
+      padding-bottom: 104px;
+    }
+
+    .rides-list-shell {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .rides-list-content {
+      padding-bottom: 24px;
+    }
  
     /* ── Top Nav ───────────────────────────────────── */
     .top-nav {
-      position: sticky;
+      position: fixed;
       top: 0;
+      width: 100%;
       z-index: 100;
       background: rgba(255,255,255,0.92);
       backdrop-filter: blur(16px);
@@ -156,14 +172,23 @@
       border: 1px solid var(--border);
       padding: 14px 16px;
       display: flex;
-      align-items: center;
-      gap: 14px;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
       cursor: pointer;
       box-shadow: var(--shadow-card);
       transition: var(--transition);
-      text-decoration: none;
       color: inherit;
       animation: cardIn 0.32s ease both;
+    }
+
+    .ride-card-main {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+      min-width: 0;
     }
  
     .ride-card:hover {
@@ -273,6 +298,11 @@
       background: var(--green-soft);
       color: var(--green);
     }
+
+    .badge-canceled {
+      background: rgba(220, 53, 69, 0.12);
+      color: #dc3545;
+    }
  
     .badge-dot {
       width: 5px;
@@ -292,6 +322,129 @@
     .ride-card:hover .card-chevron {
       transform: translateX(3px);
       color: var(--primary);
+    }
+
+    .ride-card.is-canceled {
+      opacity: 0.65;
+      filter: grayscale(0.18);
+      cursor: default;
+    }
+
+    .ride-card.is-canceled:hover {
+      transform: none;
+      box-shadow: var(--shadow-card);
+      border-color: var(--border);
+    }
+
+    .ride-card.is-canceled .card-chevron {
+      display: none;
+    }
+
+    .cancel-ride-form {
+      display: flex;
+      justify-content: flex-end;
+      width: 100%;
+      margin-top: 2px;
+    }
+
+    .cancel-btn {
+      border: 1px solid #dc3545;
+      background: rgba(220, 53, 69, 0.08);
+      color: #dc3545;
+      border-radius: 999px;
+      padding: 6px 14px;
+      min-width: 118px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      line-height: 1;
+      transition: var(--transition);
+    }
+
+    .cancel-btn:hover {
+      background: #dc3545;
+      color: #fff;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 24, 36, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 1100;
+    }
+
+    .modal.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal.hidden {
+      display: none;
+    }
+
+    .modal .modal-content {
+      width: 100%;
+      max-width: 380px;
+      background: var(--white);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 12px 30px rgba(15, 24, 36, 0.2);
+      transform: translateY(8px) scale(0.98);
+      transition: transform 0.2s ease;
+    }
+
+    .modal.show .modal-content {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal .modal-content h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      color: var(--text-strong);
+    }
+
+    .modal .modal-content p {
+      margin: 0;
+      color: var(--text-mid);
+      font-size: 0.9rem;
+    }
+
+    .modal-actions {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-danger,
+    .btn-secondary {
+      border: none;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .btn-danger:disabled,
+    .btn-secondary:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
     }
  
     /* ── Empty State ───────────────────────────────── */
@@ -381,4 +534,223 @@
       font-size: 0.85rem;
       color: var(--text-muted);
       font-weight: 600;
+    }
+
+    /* ── Mobile-First Responsive Enhancements ────── */
+    html,
+    body {
+      overflow-x: hidden;
+    }
+
+    .rides-list-page {
+      min-height: 100dvh;
+      padding-bottom: 96px;
+    }
+
+    .rides-list-shell {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+
+    .rides-list-page .top-nav {
+      padding: 12px 14px;
+    }
+
+    .rides-list-page .top-nav h1 {
+      font-size: 1.05rem;
+      line-height: 1.2;
+    }
+
+    .rides-list-page .container-fluid.rides-list-shell {
+      position: fixed;
+      top: 3rem;
+      z-index: 95;
+      background: linear-gradient(180deg, rgba(245,247,253,0.98) 0%, rgba(245,247,253,0.9) 100%);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+
+    .search-wrap {
+      margin-bottom: 0.75rem;
+    }
+
+    .search-input {
+      min-height: 42px;
+      font-size: 0.84rem;
+      border-radius: 12px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+
+    .tab-switcher {
+      display: flex;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 0.45rem;
+      padding: 4px;
+      border-radius: 999px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .tab-switcher::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-switcher {
+      scrollbar-width: none;
+    }
+
+    .tab-switcher .tab-item {
+      flex: 0 0 auto;
+      min-height: 40px;
+      padding: 8px 14px;
+      font-size: 0.78rem;
+      line-height: 1;
+      border-radius: 999px;
+    }
+
+    .count-chip {
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      font-size: 0.66rem;
+      margin-left: 5px;
+    }
+
+    .rides-list-content {
+      padding-bottom: 20px;
+    }
+
+    .upcoming-this-week {
+      gap: 0.55rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .ride-card {
+      gap: 10px;
+      padding: 12px;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(18, 36, 75, 0.09);
+    }
+
+    .card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      font-size: 0.98rem;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      margin-bottom: 3px;
+    }
+
+    .card-meta {
+      gap: 5px;
+      font-size: 0.74rem;
+      line-height: 1.35;
+    }
+
+    .ride-badge {
+      font-size: 0.64rem;
+      padding: 3px 8px;
+    }
+
+    .card-chevron {
+      font-size: 0.86rem;
+    }
+
+    .cancel-ride-form {
+      margin-top: 2px;
+      justify-content: stretch;
+    }
+
+    .cancel-btn {
+      width: 100%;
+      min-height: 40px;
+      border-radius: 11px;
+      font-size: 0.82rem;
+      padding: 9px 12px;
+    }
+
+    .modal .modal-content {
+      max-width: 340px;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .modal-actions {
+      gap: 8px;
+    }
+
+    .btn-danger,
+    .btn-secondary {
+      min-height: 40px;
+      padding: 8px 11px;
+    }
+
+    @media (max-width: 420px) {
+      .rides-list-shell {
+        padding-left: 0.65rem;
+        padding-right: 0.65rem;
+      }
+
+      .rides-list-page .top-nav {
+        padding: 10px 12px;
+      }
+
+      .rides-list-page .top-nav h1 {
+        font-size: 0.98rem;
+      }
+
+      .tab-switcher .tab-item {
+        font-size: 0.75rem;
+        padding: 8px 12px;
+      }
+
+      .ride-card {
+        padding: 11px;
+      }
+
+      .card-meta {
+        font-size: 0.71rem;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .rides-list-shell {
+        max-width: 520px;
+        padding-left: 0;
+        padding-right: 0;
+      }
+
+      .rides-list-page .container-fluid.rides-list-shell {
+        top: 67px;
+        padding-top: 12px;
+      }
+
+      .tab-switcher {
+        overflow-x: visible;
+        white-space: normal;
+        gap: 2px;
+      }
+
+      .tab-switcher .tab-item {
+        flex: 1;
+        min-height: 38px;
+      }
+
+      .cancel-btn {
+        width: auto;
+        min-width: 110px;
+      }
     }

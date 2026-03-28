@@ -22,25 +22,59 @@
   </div>
 
   <!-- Route Summary -->
-  <div class="route-card">
-    <div class="route-pin">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-      </svg>
-      <%= data.sorce %>
+  <% const isRideAdmin = curruser && data && data.adminId && data.adminId.toString() === curruser._id.toString(); %>
+  <div class="route-card" id="routeCard">
+    <% if (isRideAdmin) { %>
+      <button class="route-edit-btn" id="routeEditBtn" type="button" aria-label="Edit source and destination">
+        <i class="bi bi-pencil-square"></i>
+      </button>
+    <% } %>
+
+    <div class="route-view-mode" id="routeViewMode">
+      <div class="route-pin">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span id="sourceText"><%= data.sorce %></span>
+      </div>
+
+      <div class="route-pin" style="margin-top:0.75rem">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span id="destinationText"><%= data.destination %></span>
+      </div>
     </div>
-    <!-- <div class="route-stops">
-      <p>1. Highway Junction</p>
-      <p>2. Beachside Café</p>
-    </div> -->
-    <div class="route-pin" style="margin-top:0.75rem">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-      </svg>
-      <%= data.destination %>
-    </div>
+
+    <% if (isRideAdmin) { %>
+      <!-- Dynamic stops -->
+        <div id="stops-container"></div>
+        
+      <div class="route-edit-mode d-none" id="routeEditMode">
+        <div class="route-input-wrap">
+          <label for="sourceInput" class="route-input-label">Source</label>
+          <input id="sourceInput" class="route-input" type="text" value="<%= data.sorce %>" autocomplete="off" />
+        </div>
+
+        <div class="route-input-wrap">
+          <label for="destinationInput" class="route-input-label">Destination</label>
+          <input id="destinationInput" class="route-input" type="text" value="<%= data.destination %>" autocomplete="off" />
+        </div>
+
+        <div class="route-edit-actions">
+          <button class="route-btn route-btn-cancel" id="routeCancelBtn" type="button">
+            <i class="bi bi-x-circle"></i>
+            Cancel
+          </button>
+          <button class="route-btn route-btn-save" id="routeSaveBtn" type="button">
+            <i class="bi bi-check-circle"></i>
+            Save
+          </button>
+        </div>
+      </div>
+    <% } %>
   </div>
 
   <!-- Actions -->
@@ -100,9 +134,7 @@
   </div>
   
 </div>
-<button class="btn-cancel" id="cancelBtn" onclick="handleConfirm(this)">
-  Cancel ride
-</button>
+
 <script src="/js/ride_room.js"></script>
 </body>
 

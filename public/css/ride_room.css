@@ -56,6 +56,139 @@
       margin-bottom: 1.25rem;
       box-shadow: 0 12px 28px rgba(31, 41, 55, 0.06);
       animation: fadeUp 0.35s ease both;
+      position: relative;
+    }
+
+    .route-edit-btn {
+      position: absolute;
+      top: 0.7rem;
+      right: 0.7rem;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      box-shadow: 0 4px 10px rgba(91, 76, 250, 0.08);
+    }
+
+    .route-edit-btn:hover {
+      transform: translateY(-1px);
+      background: #f4f2ff;
+      box-shadow: 0 8px 18px rgba(91, 76, 250, 0.14);
+    }
+
+    .route-view-mode,
+    .route-edit-mode {
+      transition: opacity 0.22s ease;
+    }
+
+    .route-edit-mode {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    .route-input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .route-input-label {
+      font-size: 0.7rem;
+      color: var(--text-light);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .route-input {
+      width: 100%;
+      border: 1px solid #e4e7f0;
+      background: #fafbff;
+      color: var(--text-dark);
+      border-radius: 12px;
+      height: 42px;
+      padding: 0 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .route-input:focus {
+      border-color: var(--primary-soft);
+      box-shadow: 0 0 0 3px rgba(91, 76, 250, 0.12);
+      background: #fff;
+    }
+
+    .route-edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.55rem;
+      margin-top: 0.1rem;
+      flex-wrap: wrap;
+    }
+
+    .route-btn {
+      border: none;
+      border-radius: 11px;
+      min-height: 38px;
+      padding: 0 0.85rem;
+      font-size: 0.76rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+
+    .route-btn:active {
+      transform: scale(0.97);
+    }
+
+    .route-btn-save {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--primary-soft));
+      box-shadow: 0 8px 18px rgba(91, 76, 250, 0.25);
+    }
+
+    .route-btn-save:hover {
+      box-shadow: 0 12px 24px rgba(91, 76, 250, 0.3);
+    }
+
+    .route-btn-save:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .route-btn-cancel {
+      color: #475569;
+      background: #f2f4f8;
+      border: 1px solid #e2e8f0;
+    }
+
+    .route-btn-cancel:hover {
+      background: #e9edf4;
+    }
+
+    @media (max-width: 520px) {
+      .route-edit-actions {
+        justify-content: stretch;
+      }
+
+      .route-btn {
+        flex: 1;
+      }
     }
     .route-pin {
       display: flex; align-items: center; gap: 0.5rem;
