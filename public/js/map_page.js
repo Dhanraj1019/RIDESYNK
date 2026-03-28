@@ -593,7 +593,12 @@ window.snapTo = snapTo;
 
 function refreshChatBar() {
   const isChat = document.querySelector('.tab-btn.active')?.dataset.tab === 'chat';
-  chatBar.classList.toggle('show', isChat && state !== 'collapsed');
+  const isVisible = isChat && state !== 'collapsed';
+  chatBar.classList.toggle('show', isVisible);
+  body.classList.toggle('chat-mode', isVisible);
+
+  const chatBarSpace = isVisible ? chatBar.offsetHeight : 0;
+  document.documentElement.style.setProperty('--chat-bar-space', `${chatBarSpace}px`);
 }
 
 function onStart(e) {

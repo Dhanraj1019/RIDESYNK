@@ -33,17 +33,18 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 4rem 1.5rem 2rem;
+      padding: 0 1.5rem 2rem;
       max-width: 480px;
       width: 100%;
       margin: 0 auto;
+
     }
 
     /* -- Logo -- */
     .logo-wrap {
       display: flex;
       justify-content: center;
-      margin-bottom: 3rem;
+      /* margin-bottom: 3rem; */
       animation: fadeDown 0.4s ease forwards;
     }
     .logo-wrap img,
@@ -200,12 +201,6 @@
 
 
 
-
-
-
-
-
-
     .pass-error {
   font-size: 14px;
   color: #ff4d4f;
@@ -231,5 +226,38 @@
 .show {
   display: block;
   opacity: 1;
+  transform: translateY(0);
+}
+
+
+
+
+
+/* ========================= */
+
+.loginwithgoogle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 15px 20px;
+  background: #ffffff;
+  border: 1.5px solid #E8395E;
+  border-radius: 10px;
+  color: #1a1a2e;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.loginwithgoogle:hover {
+  background: #fff5f7;
+  box-shadow: 0 0 0 3px rgba(232, 57, 94, 0.15);
+  transform: translateY(-1px);
+}
+
+.loginwithgoogle:active {
   transform: translateY(0);
 }

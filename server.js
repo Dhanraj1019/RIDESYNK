@@ -23,6 +23,7 @@ const methodOverride=require("method-override");
 const LocalStrategy=require("passport-local");
 const mongoose=require("mongoose");
 const flash=require("connect-flash");
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const User=require("./models/user.js");
 const Ride=require("./models/ride.js");
@@ -68,13 +69,62 @@ app.use(flash())
 app.use(passport.initialize());
 app.use(passport.session());
 passport.use(new LocalStrategy(User.authenticate()));
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+// passport.serializeUser(User.serializeUser());
+// passport.deserializeUser(User.deserializeUser());
+passport.serializeUser((user, done) => {
+  done(null, user.id); // store MongoDB _id in session
+});
 
-// passport.use(new LocalStrategy(
-//   { usernameField: "email" }, 
-//   User.authenticate()
-// ));
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
+});
+
+ //================================
+
+ passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: '/auth/google/callback',
+    scope: [ 'profile' , 'email' ],
+    state: true
+  },
+async (accessToken, refreshToken, profile, done) => {
+    try {
+        // console.log(profile);
+        if (!profile.emails[0].verified) {
+            return done(null, false);
+        }
+
+        let user = await User.findOne({ email: profile.emails[0].value });
+        // console.log("user data = ",user);
+        if (!user) {
+            user = await User.create({
+                googleId: profile.id,
+                email: profile.emails[0].value,
+                firstname: profile.name.givenName,
+                lastname: profile.name.familyName,
+                username: profile.emails[0].value.split("@")[0]
+            });
+        } else {
+            if (!user.googleId) {
+                user.googleId = profile.id;
+                await user.save();
+            }
+        }
+
+        return done(null, user);
+    } catch (err) {
+        return done(err, null);
+    }
+}));
+
+
+ //=================================
 
 app.use((req,res,next)=>{
     res.locals.success=req.flash("success");
@@ -189,7 +239,10 @@ app.post("/ridesync/signup",async (req,res,next)=>{
             }
             else{
                 req.flash("success","Welcome to ridesync...")
-                return res.render("profile/complete_profile.ejs",{user});
+                return res.render("profile/complete_profile.ejs", {
+                    user,
+                    isCompleteProfilePage: true
+                });
             }
         })
     }catch(error){
@@ -235,7 +288,7 @@ app.post(
 );
 
 app.get("/ridesync/saveprofile",isAuthenticated,(req,res)=>{
-    res.render("listing/home_dashboard.ejs");
+    res.redirect("listing/home_dashboard.ejs");
 })
 
 app.post("/ridesync/saveprofile",isAuthenticated,async (req,res)=>{
@@ -578,7 +631,7 @@ app.get("/ridesync/home",isAuthenticated,async (req,res)=>{
     const rides=await RideMember.find({userId:req.user._id}).populate("rideId");
     // data.rides=rides;
     // console.log(data);
-    console.log(rides);
+    console.log("rides = ",rides);
     let members=0;
     for(let ride of rides){
         members+=ride.rideId.totalMembers;
@@ -659,6 +712,28 @@ app.get("/ridesync/logout",isAuthenticated,(req,res,next)=>{
         res.redirect("/ridesync/login")
     })
 })
+
+
+
+
+
+//==========================================
+
+app.get("/ridesync/login/google",passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/ridesync/login', failureMessage: true }),
+  (req, res) => {
+    res.redirect('/ridesync/home');
+  });
+
+
+//=======================================
+
+
+
+
 
 
 

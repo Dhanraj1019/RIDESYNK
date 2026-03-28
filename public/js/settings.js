@@ -2,20 +2,22 @@
   const langs = ['English','हिन्दी (Hindi)','Español','Français','العربية','বাংলা (Bengali)','Português','Русский'];
   let selectedLang = 'English';
   const langList = document.getElementById('langList');
-  langs.forEach(l => {
-    const btn = document.createElement('button');
-    btn.className = 'menu-item';
-    btn.style.borderRadius = '0';
-    btn.innerHTML = `<div class="item-body"><p class="item-title">${l}</p></div>
-      <span class="item-end">${l===selectedLang?'<i class="bi bi-check2" style="color:var(--brand);font-size:1.1rem;"></i>':''}</span>`;
-    btn.onclick = () => {
-      selectedLang = l;
-      langList.innerHTML = '';
-      langs.forEach(x => langList.appendChild(buildLangBtn(x)));
-      showToast(`Language set to ${l}`);
-    };
-    langList.appendChild(btn);
-  });
+  if (langList) {
+    langs.forEach(l => {
+      const btn = document.createElement('button');
+      btn.className = 'menu-item';
+      btn.style.borderRadius = '0';
+      btn.innerHTML = `<div class="item-body"><p class="item-title">${l}</p></div>
+        <span class="item-end">${l===selectedLang?'<i class="bi bi-check2" style="color:var(--brand);font-size:1.1rem;"></i>':''}</span>`;
+      btn.onclick = () => {
+        selectedLang = l;
+        langList.innerHTML = '';
+        langs.forEach(x => langList.appendChild(buildLangBtn(x)));
+        showToast(`Language set to ${l}`);
+      };
+      langList.appendChild(btn);
+    });
+  }
  
   function buildLangBtn(l) {
     const btn = document.createElement('button');
@@ -33,9 +35,13 @@
   }
  
   // Delete confirm enable
-  document.getElementById('deleteConfirmInput').addEventListener('input', function(){
-    document.getElementById('confirmDeleteBtn').disabled = this.value.trim() !== 'DELETE';
-  });
+  const deleteConfirmInput = document.getElementById('deleteConfirmInput');
+  const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+  if (deleteConfirmInput && confirmDeleteBtn) {
+    deleteConfirmInput.addEventListener('input', function(){
+      confirmDeleteBtn.disabled = this.value.trim().toUpperCase() !== 'DELETE';
+    });
+  }
  
   // Toast helper
   function showToast(msg) {
@@ -46,10 +52,13 @@
   }
  
   // Dark mode toggle (preview)
-  document.getElementById('darkToggle').addEventListener('change', function(){
-    document.body.style.background = this.checked ? '#12121A' : 'var(--bg)';
-    document.querySelectorAll('.menu-group, .profile-card, .signout-btn, .modal-content').forEach(el=>{
-      el.style.background = this.checked ? '#1E1E2A' : '';
-      el.style.color = this.checked ? '#fff' : '';
+  const darkToggle = document.getElementById('darkToggle');
+  if (darkToggle) {
+    darkToggle.addEventListener('change', function(){
+      document.body.style.background = this.checked ? '#12121A' : 'var(--bg)';
+      document.querySelectorAll('.menu-group, .profile-card, .signout-btn, .modal-content').forEach(el=>{
+        el.style.background = this.checked ? '#1E1E2A' : '';
+        el.style.color = this.checked ? '#fff' : '';
+      });
     });
-  });
+  }

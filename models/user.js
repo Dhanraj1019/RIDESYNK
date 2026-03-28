@@ -3,8 +3,14 @@ const passportLocalMongoose = require("passport-local-mongoose").default;
 const RideMember=require("./ride_member.js");
 const Ride=require("./ride.js");
 const userSchema = new mongoose.Schema({
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   username: {
     type: String,
+    unique:true,
     required: true,
     trim: true
   },
@@ -12,6 +18,7 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
+    unique:true,
     lowercase: true,
     trim: true
   },
@@ -28,6 +35,7 @@ const userSchema = new mongoose.Schema({
 
   phonenumber: {
     type: String,
+    unique:true,
     trim: true
   },
 
