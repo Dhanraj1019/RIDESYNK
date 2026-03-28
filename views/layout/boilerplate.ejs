@@ -63,6 +63,7 @@
         <% } %>
     <link href="/css/footer.css" rel="stylesheet">
     <link href="/css/404.css" rel="stylesheet">
+    <link href="/css/index.css" rel="stylesheet">
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 </head>
@@ -70,6 +71,9 @@
  
         <%- include("../includes/navbar.ejs") %>
         <%- include("../listing/flash.ejs") %>
+        <div class="loader_container">
+            <div class="loader"></div>
+        </div>
         <%- body %>
         <div class="paddiv"></div>
         <% if(!originalUrl.endsWith("/live-tracking")) { %>
@@ -100,6 +104,13 @@
             })()
         </script>
 
+        <!-- //============= -->
+        <script>
+            window.addEventListener("load", function () {
+                document.querySelector(".loader_container").style.display = "none";
+            });
+        </script>
+        <!-- //================ -->
 
     </body>
 </html>
