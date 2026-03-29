@@ -29,6 +29,7 @@ const User=require("./models/user.js");
 const Ride=require("./models/ride.js");
 const Message=require("./models/message.js");
 const RideMember=require("./models/ride_member.js");
+const registerSocketHandlers = require("./socket/socketHandeler.js");
 
 const mbxGeocoding = require("@mapbox/mapbox-sdk/services/geocoding");
 const geocoder = mbxGeocoding({
@@ -89,7 +90,7 @@ passport.deserializeUser(async (id, done) => {
  passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: '/auth/google/callback',
+    callbackURL: 'https://greetingless-nonextrinsically-rubi.ngrok-free.dev/auth/google/callback',
     scope: [ 'profile' , 'email' ],
     state: true
   },
@@ -151,42 +152,7 @@ server.listen(8080,()=>{
     console.log("we are listing on port 8080 !")
 })
 
-io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
-
-  socket.on("receiveLocation", (data) => {
-  const { userId, lat, lng } = data;
-
-  console.log("User location:", userId, lat, lng);
-
-  updateUserMarker(userId, lat, lng);
-  });
-
-  // Join ride room
-  socket.on("joinRide", (rideId) => {
-    console.log("Emitting to rideId:", rideId, typeof rideId);
-    socket.join(rideId);
-    console.log("Joined ride:", rideId);
-  });
-
-  // Send message
-  socket.on("sendMessage", async (data) => {
-    const { rideId, senderId, message } = data;
-    // Save in DB
-    console.log("rideId,senderId,message")
-    const newMsg = new Message({ rideId, senderId, message });
-    await newMsg.save();
-    await newMsg.populate({path:"senderId",select:"firstname"});
-    console.log(newMsg);
-    // Send to all in same ride
-    io.to(rideId).emit("receiveMessage", newMsg);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
-});
+registerSocketHandlers(io);
 
 // server.listen(8080, () => {
 //   console.log("Server running on port 8080");
@@ -230,7 +196,7 @@ app.post("/ridesync/signup",async (req,res,next)=>{
         if(testdata.length>0){
             req.flash("error","with this crediencials user alrady exist...");
             return res.redirect("/ridesync/signup");
-        }
+        } 
         let newuser=new User(user);
         let result = await User.register(newuser,password);
         req.login(result,(err)=>{
@@ -630,7 +596,9 @@ app.post("/ridesync/rideroom/:id/add-members",isAuthenticated,async (req,res)=>{
     res.render("ride/add_members.ejs");
 })
 
-
+app.get("/ridesync/rideroom/add-member/link/:id",(req,res)=>{
+    console.log("link works.");
+})
 
 app.get("/ridesync/:id/rides",isAuthenticated,async (req,res)=>{
     const {id} = req.params;

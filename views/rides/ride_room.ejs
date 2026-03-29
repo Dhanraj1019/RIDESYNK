@@ -121,7 +121,16 @@
       SOS Log
     </button>
   </div>
-
+  <div class="ride_link mb-2" style="display: flex; justify-content: space-between;">
+    <div class="linkfield">
+      <input type="text" id="rideLinkInput" value="http://localhost:8080/ridesync/rideroom/add-member/link/<%=data._id%>" readonly />
+      <button class="copy-btn" id="copyRideLinkBtn" onclick="copyRideLink()">
+        <i class="bi bi-clipboard"></i>
+    </div>
+    <button>
+      Join Ride
+    </button>
+  </div>
   <!-- Members -->
   <div class="section-header">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"

@@ -22,10 +22,23 @@ function getSenderInitial(sender) {
 // ── Connect: join ride room + start GPS ──────────────────────────────
 socket.on('connect', () => {
   console.log('Socket connected:', socket.id);
-  socket.emit('joinRide', ride_id);
+  socket.emit('join:ride', { rideId: ride_id, userId: userid });
   startLiveLocation();
 });
 socket.on('disconnect', () => console.log('Socket disconnected'));
+
+function updateActiveUsersCounter({ activeCount, totalCount }) {
+  const activeEl = document.getElementById('activeUsersCount');
+  const totalEl = document.getElementById('totalUsersCount');
+  if (activeEl && Number.isFinite(Number(activeCount))) {
+    activeEl.textContent = String(activeCount);
+  }
+  if (totalEl && Number.isFinite(Number(totalCount))) {
+    totalEl.textContent = String(totalCount);
+  }
+}
+
+socket.on('ride:activeUsers:update', updateActiveUsersCounter);
 
 // ── GPS tracking ─────────────────────────────────────────────────────
 let watchId = null;
@@ -42,8 +55,9 @@ function startLiveLocation() {
       const heading = pos.coords.heading;
       const speed = pos.coords.speed;
 
-      // Broadcast to other riders in this room
-      socket.emit('sendLocation', { rideId: ride_id, userId: userid, lat, lng, heading, speed });
+      // Broadcast to other riders in this room.
+      const payload = { rideId: ride_id, userId: userid, lat, lng, heading, speed };
+      socket.emit('location:update', payload);
 
       // Render my own vehicle marker on my own map
       if (typeof window.updateUserMarker === 'function') {
@@ -56,20 +70,32 @@ function startLiveLocation() {
 }
 
 // ── Receive other riders' locations ──────────────────────────────────
-socket.on('receiveLocation', ({ userId, lat, lng, heading, speed }) => {
+function onRemoteLocationUpdate({ userId, lat, lng, heading, speed }) {
   if (String(userId) === String(userid)) return; // skip own echo
   if (typeof window.updateUserMarker === 'function') {
     window.updateUserMarker(userId, lat, lng, heading, speed);
   }
+}
+
+socket.on('location:update', onRemoteLocationUpdate);
+socket.on('receiveLocation', onRemoteLocationUpdate);
+
+socket.on('location:sync', (locations) => {
+  if (!Array.isArray(locations)) return;
+  locations.forEach((item) => onRemoteLocationUpdate(item));
 });
 
 // ── Rider left ────────────────────────────────────────────────────────
-socket.on('userLeft', ({ userId }) => {
+function removeRemoteUser({ userId }) {
   if (typeof window.removeUser === 'function') window.removeUser(userId);
-});
+}
+
+socket.on('location:remove', removeRemoteUser);
+socket.on('userLeft', removeRemoteUser);
 
 // ── Cleanup ───────────────────────────────────────────────────────────
 window.addEventListener('beforeunload', () => {
+  socket.emit('leave:ride', { rideId: ride_id, userId: userid });
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   socket.disconnect();
 });

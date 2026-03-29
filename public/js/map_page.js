@@ -153,7 +153,7 @@ document.getElementById('btnMapStyle').addEventListener('click', () => {
     // Re-trigger live positions for everything that was drawn
     Object.keys(window._lastPos).forEach(id => {
       const pos = window._lastPos[id];
-      scheduleUserRoute(id, pos.lat, pos.lng);
+      scheduleUserRoute(id, pos.lat, pos.lng, { force: true });
     });
   });
 });
@@ -227,6 +227,13 @@ const USER_COLORS = [
 ];
 let _colorIdx = 0;
 const _userColorMap = {};
+const _memberDirectory = Array.isArray(window.rideMembers)
+  ? window.rideMembers.reduce((acc, item) => {
+    if (!item || !item.userId) return acc;
+    acc[String(item.userId)] = item;
+    return acc;
+  }, {})
+  : {};
 
 function getUserColor(userId) {
   if (!_userColorMap[userId]) {
@@ -234,6 +241,37 @@ function getUserColor(userId) {
     _colorIdx++;
   }
   return _userColorMap[userId];
+}
+
+function getMemberMeta(userId) {
+  const m = _memberDirectory[String(userId)] || {};
+  return {
+    name: m.name || `Rider ${String(userId).slice(-4)}`,
+    initials: m.initials || 'R',
+    avatar: m.avatar || ''
+  };
+}
+
+function moveMarkerSmooth(marker, nextLngLat) {
+  const start = marker.getLngLat();
+  const startLng = start.lng;
+  const startLat = start.lat;
+  const endLng = nextLngLat[0];
+  const endLat = nextLngLat[1];
+  const startTime = performance.now();
+  const durationMs = 550;
+
+  const tick = (now) => {
+    const t = Math.min(1, (now - startTime) / durationMs);
+    const eased = 1 - Math.pow(1 - t, 3);
+    marker.setLngLat([
+      startLng + (endLng - startLng) * eased,
+      startLat + (endLat - startLat) * eased
+    ]);
+    if (t < 1) requestAnimationFrame(tick);
+  };
+
+  requestAnimationFrame(tick);
 }
 
 // ── 5. Directions API ────────────────────────────────────────────────
@@ -304,8 +342,30 @@ async function drawMainRoute(fitToRoute = true) {
 
 // ── 7. Per-user dashed route (live pos → destination) ────────────────
 const _routeDebounce = {};
+const _lastRouteAnchor = {}; // userId -> { lat, lng }
+const _lastRouteFetchAt = {}; // userId -> epoch ms
+const ROUTE_MIN_MOVE_METERS = 35;
+const ROUTE_MAX_STALE_MS = 15000;
 
-function scheduleUserRoute(userId, lat, lng) {
+function shouldRecalculateRoute(userId, lat, lng, force = false) {
+  if (force) return true;
+
+  const prev = _lastRouteAnchor[userId];
+  const lastFetchedAt = _lastRouteFetchAt[userId] || 0;
+  if (!prev) return true;
+
+  const movedMeters = haversineKm(prev.lat, prev.lng, lat, lng) * 1000;
+  const staleForMs = Date.now() - lastFetchedAt;
+
+  if (movedMeters >= ROUTE_MIN_MOVE_METERS) return true;
+  if (staleForMs >= ROUTE_MAX_STALE_MS) return true;
+  return false;
+}
+
+function scheduleUserRoute(userId, lat, lng, options = {}) {
+  const force = Boolean(options.force);
+  if (!shouldRecalculateRoute(userId, lat, lng, force)) return;
+
   clearTimeout(_routeDebounce[userId]);
   _routeDebounce[userId] = setTimeout(() => drawUserRoute(userId, lat, lng), 800);
 }
@@ -319,6 +379,9 @@ async function drawUserRoute(userId, lat, lng) {
   try {
     const route = await fetchRoute(lng, lat, dest_coords[0], dest_coords[1]);
     if (!route) return;
+
+    _lastRouteAnchor[userId] = { lat, lng };
+    _lastRouteFetchAt[userId] = Date.now();
 
     if (String(userId) === String(userid)) {
       if (typeof route.distance === 'number') {
@@ -446,10 +509,12 @@ window.updateUserMarker = function updateUserMarker(userId, lat, lng, heading, s
   if (isNaN(lat) || isNaN(lng)) return;
 
   const color = getUserColor(userId);
+  const memberMeta = getMemberMeta(userId);
+  const isSelf = String(userId) === String(userid);
 
   if (window.liveMarkers[userId]) {
     // ── Move existing vehicle ──
-    window.liveMarkers[userId].setLngLat([lng, lat]);
+    moveMarkerSmooth(window.liveMarkers[userId], [lng, lat]);
 
     // Rotate to face direction of travel
     if (window._lastPos[userId]) {
@@ -461,13 +526,19 @@ window.updateUserMarker = function updateUserMarker(userId, lat, lng, heading, s
   } else {
     // ── First valid GPS fix: build the vehicle element ──
     const wrap = document.createElement('div');
-    wrap.className = 'vehicle-wrap';
+    wrap.className = 'vehicle-wrap rider-marker';
     wrap.style.cssText = `
       width: 38px; height: 54px;
       cursor: pointer;
       filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
     `;
-    wrap.innerHTML = makeVehicleSVG(color);
+    wrap.innerHTML = `${makeVehicleSVG(color)}
+      <div class="rider-tag ${isSelf ? 'self' : ''}">
+        ${memberMeta.avatar
+          ? `<img src="${memberMeta.avatar}" alt="${memberMeta.name}" class="rider-avatar" />`
+          : `<span class="rider-initial">${memberMeta.initials}</span>`}
+        <span class="rider-name">${memberMeta.name}</span>
+      </div>`;
 
     // Smooth rotation transition on the inner SVG
     wrap.querySelector('svg').style.cssText = `
@@ -481,13 +552,17 @@ window.updateUserMarker = function updateUserMarker(userId, lat, lng, heading, s
       anchor: 'center'
     })
       .setLngLat([lng, lat])
+      .setPopup(
+        new mapboxgl.Popup({ offset: 20, closeButton: false })
+          .setHTML(`<b>${memberMeta.name}</b><br/>Live location`)
+      )
       .addTo(window.map);
   }
 
   // Save last position for next heading calculation
   window._lastPos[userId] = { lat, lng };
 
-  if (String(userId) === String(userid) && Number.isFinite(speedMps) && speedMps >= 0) {
+  if (isSelf && Number.isFinite(speedMps) && speedMps >= 0) {
     window._selfSpeedKmh = speedMps * 3.6;
     refreshSelfEta();
   }
@@ -511,6 +586,8 @@ window.removeUser = function removeUser(userId) {
   }
   delete _userColorMap[userId];
   delete _routeDebounce[userId];
+  delete _lastRouteAnchor[userId];
+  delete _lastRouteFetchAt[userId];
   delete window._lastPos[userId];
 };
 

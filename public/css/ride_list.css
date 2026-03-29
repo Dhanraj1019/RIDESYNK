@@ -736,6 +736,7 @@
       .rides-list-page .container-fluid.rides-list-shell {
         top: 67px;
         padding-top: 12px;
+        width: 100%;
       }
 
       .tab-switcher {

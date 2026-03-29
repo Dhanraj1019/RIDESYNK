@@ -10,6 +10,22 @@
   const map_token = "<%= map_token %>";
   const rideData  = <%- JSON.stringify(data) %>;
   const userid    = "<%= curruser._id %>";
+  const rideMembers = <%- JSON.stringify(
+    (members || []).map((m) => {
+      const u = m && m.userId ? m.userId : {};
+      const firstname = u.firstname || "";
+      const lastname = u.lastname || "";
+      const name = `${firstname} ${lastname}`.trim() || "Rider";
+      const initials = `${firstname[0] || "R"}${lastname[0] || ""}`.toUpperCase();
+      return {
+        userId: String(u._id || ""),
+        name,
+        initials: initials || "R",
+        avatar: u.profilePhoto || u.avatar || u.image || ""
+      };
+    })
+  ) %>;
+  window.rideMembers = rideMembers;
 </script>
  <body>
 <!-- NAVBAR -->
@@ -21,7 +37,7 @@
   <button class="icon-btn" onclick="history.back()"><i class="bi bi-arrow-left"></i></button>
   <div class="app-nav-title">
     <h1><%= data.ridename %></h1>
-    <p class="app-nav-sub"><i class="bi bi-people-fill"></i> <%= joinedMembersCount %>/<%= totalMembersCount %> joined</p>
+    <p class="app-nav-sub"><i class="bi bi-people-fill"></i> <span id="activeUsersCount">1</span>/<span id="totalUsersCount"><%= totalMembersCount %></span> joined</p>
   </div>
   <button class="icon-btn"><i class="bi bi-share"></i></button>
 </nav>
