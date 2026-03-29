@@ -620,6 +620,42 @@
   transform: translateY(0) scale(0.97);
 }
 
+.error {
+  min-height: 20px;
+  margin: 2px 0 8px;
+  color: #ef4444;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.dedupe-btn {
+  border: 1px solid rgba(91, 76, 250, 0.22);
+  background: #fff;
+  color: #4c3ce7;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dedupe-btn:hover {
+  background: rgba(91, 76, 250, 0.08);
+  border-color: rgba(91, 76, 250, 0.4);
+}
+
+.member-item.duplicate {
+  border: 2px solid #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+.member-input.duplicate {
+  border: 2px solid #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
 .result-card,
 .member-item {
   border-radius: 16px;

@@ -5,6 +5,37 @@
 
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGhhbnJhajUzNjgiLCJhIjoiY21tajZ6Y2RrMDVsdDJwc2Fnejd3MGlqZSJ9.PSjj-o-pd1Qx0cU47SLqJQ'; // replace with your token
 
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseRideDateTime(dateValue, timeValue) {
+  if (!dateValue || !timeValue) return null;
+  const rideDateTime = new Date(`${dateValue}T${timeValue}`);
+  return Number.isNaN(rideDateTime.getTime()) ? null : rideDateTime;
+}
+
+function validateFutureDateTime(dateValue, timeValue) {
+  const rideDateTime = parseRideDateTime(dateValue, timeValue);
+  if (!rideDateTime) {
+    return { valid: false, message: 'Please select a future date and time' };
+  }
+
+  if (rideDateTime <= new Date()) {
+    return { valid: false, message: 'Please select a future date and time' };
+  }
+
+  return { valid: true, message: '' };
+}
+
+function setErrorMessage(errorNode, message) {
+  if (!errorNode) return;
+  errorNode.textContent = message || '';
+}
+
 /* ── Debounce helper ── */
 function debounce(fn, delay) {
   let t;
@@ -198,6 +229,75 @@ function attachSearch(input, hiddenName = null) {
 ══════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
 
+  const createRideForm = document.querySelector('form[action="/ridesync/createride"]');
+  const dateInput = document.getElementById('ride-date');
+  const timeInput = document.getElementById('ride-time');
+  const errorNode = document.getElementById('error-msg');
+
+  if (dateInput) {
+    dateInput.min = toDateInputValue(new Date());
+  }
+
+  const runDateTimeValidation = () => {
+    if (!dateInput || !timeInput) return true;
+    const result = validateFutureDateTime(dateInput.value, timeInput.value);
+    setErrorMessage(errorNode, result.valid ? '' : result.message);
+    return result.valid;
+  };
+
+  if (dateInput) dateInput.addEventListener('input', runDateTimeValidation);
+  if (timeInput) timeInput.addEventListener('input', runDateTimeValidation);
+
+  if (createRideForm) {
+    createRideForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const isValidByBrowser = createRideForm.checkValidity();
+      createRideForm.classList.add('was-validated');
+      if (!isValidByBrowser) return;
+
+      if (!runDateTimeValidation()) return;
+
+      try {
+        const formData = new FormData(createRideForm);
+        const body = new URLSearchParams(formData);
+
+        const response = await fetch('/ridesync/createride', {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+          },
+          body: body.toString()
+        });
+
+        if (!response.ok) {
+          let payload = null;
+          try {
+            payload = await response.json();
+          } catch (e) {
+            payload = null;
+          }
+
+          const message = payload && payload.error
+            ? payload.error
+            : 'Unable to create ride. Please try again.';
+          setErrorMessage(errorNode, message);
+          return;
+        }
+
+        if (response.redirected && response.url) {
+          window.location.href = response.url;
+          return;
+        }
+
+        window.location.reload();
+      } catch (error) {
+        setErrorMessage(errorNode, 'Unable to create ride. Please try again.');
+      }
+    });
+  }
+
   /* Start location input */
   const sourceInput = document.querySelector('input[name="ride[sorce]"]');
   if (sourceInput) {
@@ -215,6 +315,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const addStopBtn     = document.getElementById('add-stop-btn');
   let   stopCount      = 0;
   const MAX_STOPS      = 3;
+
+  if (!stopsContainer || !addStopBtn) return;
 
   addStopBtn.addEventListener('click', () => {
     if (stopCount >= MAX_STOPS) return;

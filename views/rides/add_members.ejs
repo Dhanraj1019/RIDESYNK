@@ -31,7 +31,7 @@
         />
         <i class="fa-solid fa-magnifying-glass"></i>
       </div>
-      <button class="search-btn" onclick="doSearch()">
+      <button class="search-btn" id="search-btn" onclick="doSearch()">
         <i class="fa-solid fa-magnifying-glass" style="margin-right:5px;font-size:.75rem;"></i>Search
       </button>
     </div>
@@ -66,10 +66,21 @@
       </div>
     </div>
 
+    <p id="error-msg" class="error" aria-live="polite"></p>
+    <button type="button" class="dedupe-btn" id="dedupe-btn" onclick="removeDuplicates()">
+      Auto Remove Duplicates
+    </button>
+
     <div id="member-list">
       <!-- Admin (always present, cannot be removed) -->
        <% for(let m of data) { %>
-        <div class="member-item" id="admin-item">
+        <div
+          class="member-item"
+          id="<%= ('mem-' + String(m.userId.phonenumber || '').replace(/\D/g, '')) %>"
+          data-phone="<%= String(m.userId.phonenumber || '').replace(/\D/g, '') %>"
+          data-user-id="<%= m.userId._id.toString() %>"
+        >
+          <input type="hidden" class="member-input" value="<%= m.userId._id.toString() %>" />
           <div class="mem-avatar avatar av-1 online">
             <%= m.userId.firstname[0].toUpperCase() %>
           </div>

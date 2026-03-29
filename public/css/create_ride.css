@@ -73,6 +73,14 @@
     /* Date/time grid */
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 
+    .error {
+      min-height: 1.1rem;
+      margin: 0.35rem 0 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #d92d20;
+    }
+
     /* -- Route section -- */
     .route-row {
       display: flex; align-items: center; gap: 0.75rem;

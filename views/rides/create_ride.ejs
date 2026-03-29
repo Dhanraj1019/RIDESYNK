@@ -28,13 +28,14 @@
       <div class="two-col">
         <div>
           <label class="field-label" for="ride-date">Date</label>
-          <input class="field-input form-control" name="ride[date]" type="date" id="ride-date" />
+          <input class="field-input form-control" required name="ride[date]" type="date" id="ride-date" />
         </div>
         <div>
           <label class="field-label" for="ride-time">Time</label>
           <input class="field-input form-control" required name="ride[time]" type="time" id="ride-time" />
         </div>
       </div>
+      <p id="error-msg" class="error" aria-live="polite"></p>
   
       <!-- Route -->
       <div>

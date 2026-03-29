@@ -29,6 +29,116 @@ function normalizePhone(phone) {
   return String(phone).replace(/\D/g, '');
 }
 
+function setInlineError(message) {
+  const errorNode = document.getElementById('error-msg');
+  if (!errorNode) return;
+  errorNode.textContent = message || '';
+}
+
+function clearDuplicateHighlights() {
+  document.querySelectorAll('.member-item.duplicate').forEach((node) => {
+    node.classList.remove('duplicate');
+  });
+  document.querySelectorAll('.member-input.duplicate').forEach((node) => {
+    node.classList.remove('duplicate');
+  });
+}
+
+function validateMembers() {
+  const inputs = document.querySelectorAll('.member-input');
+  const seen = new Set();
+  const duplicates = new Set();
+
+  inputs.forEach((input) => {
+    const val = String(input.value || '').trim().toLowerCase();
+    if (!val) return;
+
+    if (seen.has(val)) {
+      duplicates.add(val);
+    } else {
+      seen.add(val);
+    }
+  });
+
+  clearDuplicateHighlights();
+
+  inputs.forEach((input) => {
+    const val = String(input.value || '').trim().toLowerCase();
+    if (duplicates.has(val)) {
+      input.classList.add('duplicate');
+      const row = input.closest('.member-item');
+      if (row) row.classList.add('duplicate');
+    }
+  });
+
+  if (duplicates.size > 0) {
+    setInlineError('Duplicate users found in selected list');
+    return false;
+  }
+
+  setInlineError('');
+  return true;
+}
+
+function removeDuplicates() {
+  const inputs = Array.from(document.querySelectorAll('.member-input'));
+  const seen = new Set();
+  let removedCount = 0;
+
+  inputs.forEach((input) => {
+    const val = String(input.value || '').trim().toLowerCase();
+    if (!val) return;
+
+    if (!seen.has(val)) {
+      seen.add(val);
+      return;
+    }
+
+    const row = input.closest('.member-item');
+    if (!row) return;
+
+    const removeBtn = row.querySelector('.remove-btn');
+    if (!removeBtn) return;
+
+    const phone = row.dataset.phone;
+    const userId = row.dataset.userId;
+
+    row.remove();
+    if (phone) addedPhones.delete(phone);
+    if (userId) addedIds.delete(String(userId));
+    removedCount++;
+  });
+
+  updateCount();
+  validateMembers();
+
+  if (removedCount > 0) {
+    showToast(`${removedCount} duplicate member(s) removed`);
+  }
+}
+
+function hydrateExistingMembers() {
+  const existingItems = document.querySelectorAll('#member-list .member-item');
+
+  existingItems.forEach((item) => {
+    const phone = normalizePhone(item.dataset.phone || '');
+    const userId = String(item.dataset.userId || '').trim();
+
+    if (phone) addedPhones.add(phone);
+
+    if (userId) {
+      const existingHidden = item.querySelector('.member-input');
+      if (!existingHidden) {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.className = 'member-input';
+        hiddenInput.value = userId;
+        item.appendChild(hiddenInput);
+      }
+    }
+  });
+}
+
 /* ============================================================
    SEARCH
    ============================================================ */
@@ -83,19 +193,16 @@ async function doSearch() {
 
     // ── check if already in list using NORMALIZED phone ──
     const addBtn = document.getElementById('add-result-btn');
-    
-    console.log(user)
-    if (addedPhones.has(normalizePhone(user.phonenumber))) {
-      setAddBtnAdded(addBtn);
-    } else {
-      setAddBtnReady(addBtn);
-    }
+    const alreadyAdded = addedPhones.has(normalizePhone(user.phonenumber));
+
     if (user.isDeleted || user.status !== "active") {
       addBtn.disabled = true;
       addBtn.textContent = "Cannot Add";
+      addBtn.onclick = null;
+    } else if (alreadyAdded) {
+      setAddBtnAdded(addBtn);
     } else {
-      addBtn.disabled = false;
-      addBtn.textContent = "Add";
+      setAddBtnReady(addBtn);
     }
     resultDiv.style.display = 'block';
 
@@ -156,6 +263,7 @@ function addMemberToList(user) {
 
   // Pass NORMALIZED phone to removeMember — no special chars
   item.innerHTML = `
+    <input type="hidden" class="member-input" value="${String(user._id)}" />
     <div class="mem-avatar ${color}">${avatarLetter}</div>
     <div class="mem-info">
       <div class="mem-name">${fullName}</div>
@@ -183,6 +291,7 @@ function addMemberToList(user) {
   });
 
   updateCount();
+  validateMembers();
   showToast((user.firstname || 'User') + ' added to ride 🎉');
 }
 
@@ -218,6 +327,7 @@ function removeMember(phone, userId) {
     console.log('addedPhones after delete:', [...addedPhones]);
 
     updateCount();
+  validateMembers();
 
     // Re-enable Add button if this removed user matches current search result
     if (searchedUser) {
@@ -246,6 +356,8 @@ function clearSearch() {
    DONE — save all _ids to DB
    ============================================================ */
 async function handleDone() {
+  if (!validateMembers()) return;
+
   const parts   = window.location.pathname.split('/');
   const RIDE_ID = parts[parts.indexOf('rideroom') + 1];
 
@@ -271,15 +383,18 @@ async function handleDone() {
     const data = await res.json();
 
     if (!res.ok || !data.success) {
+      setInlineError(data.error || data.message || 'Failed to save members');
       showToast(data.message || 'Failed to save members');
       return;
     }
 
+    setInlineError('');
     showToast('Members saved ✓');
-    setTimeout(() => history.back(), 800);
+    setTimeout(() => window.location.href = `/ridesync/rideroom/${RIDE_ID}`, 800);
 
   } catch (err) {
     console.error('handleDone error:', err);
+    setInlineError('Something went wrong');
     showToast('Network error');
   }
 }
@@ -340,6 +455,19 @@ function showToast(msg) {
 /* ============================================================
    ENTER KEY
    ============================================================ */
-document.getElementById('phone-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+document.addEventListener('DOMContentLoaded', () => {
+  hydrateExistingMembers();
+  validateMembers();
+
+  const memberList = document.getElementById('member-list');
+  if (memberList) {
+    memberList.addEventListener('input', validateMembers);
+  }
+
+  const phoneInput = document.getElementById('phone-input');
+  if (phoneInput) {
+    phoneInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+    });
+  }
 });

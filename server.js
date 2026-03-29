@@ -350,51 +350,99 @@ app.post("/ridesync/rideroom/:rideId/add-members", isAuthenticated , async (req,
     try {
         const { rideId }  = req.params;
         const { userIds } = req.body;
-        console.log(userIds);
+
+        const members = Array.isArray(userIds)
+            ? userIds.map((id) => String(id || '').trim()).filter(Boolean)
+            : [];
+
         // Validate
-        if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+        if (members.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'No user IDs provided'
+                message: 'No user IDs provided',
+                error: 'No user IDs provided'
             });
         }
-        console.log("userIds = =",userIds);
-        console.log("userIds = =",userIds.length);
+
+        const uniqueMembers = new Set(members);
+        if (uniqueMembers.size !== members.length) {
+            return res.status(400).json({
+                success: false,
+                message: 'Duplicate users found in selected list',
+                error: 'Duplicate users found in selected list'
+            });
+        }
+
+        const invalidMemberId = members.some((id) => !mongoose.Types.ObjectId.isValid(id));
+        if (invalidMemberId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid user ID in selected list',
+                error: 'Invalid user ID in selected list'
+            });
+        }
+
         // $addToSet with $each — adds all IDs, no duplicates ever saved
         const ride=await Ride.findById(rideId);
         if(!ride){
             return res.status(400).json({
                 success:false,
-                message:"no ride exist "
+                message:"no ride exist ",
+                error:"no ride exist "
             })
         }
 
         if(ride.adminId.toString()!=req.user._id.toString()){
             return res.status(400).json({
                 success:false,
-                message:"only admin can add members "
+                message:"only admin can add members ",
+                error:"only admin can add members "
             })
         }
 
-        const members=userIds.map(id=>({
-            userId:id,
-            rideId:rideId,
-            role:"member"
-        }))
+        const existingMembers = await RideMember.find({
+            rideId,
+            userId: { $in: members }
+        }).select('userId');
+
+        const existingIds = new Set(existingMembers.map((m) => m.userId.toString()));
+        const membersToInsert = members.filter((id) => !existingIds.has(id));
+
+        if (membersToInsert.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Duplicate users found in selected list',
+                error: 'Duplicate users found in selected list'
+            });
+        }
+
+        const membersPayload = membersToInsert.map((id) => ({
+            userId: id,
+            rideId: rideId,
+            role: "member"
+        }));
         
-        const fnf=await RideMember.insertMany(members,{ordered:false});
-        await Ride.findByIdAndUpdate(rideId,{ $inc: { totalMembers: userIds.length } });
+        await RideMember.insertMany(membersPayload,{ordered:false});
+        await Ride.findByIdAndUpdate(rideId,{ $inc: { totalMembers: membersToInsert.length } });
         return res.json({
             success: true,
-            message: `${userIds.length} member(s) added to ride`,
+            message: `${membersToInsert.length} member(s) added to ride`,
             ride: req.user
         });
 
     } catch (err) {
         console.error('ADD MEMBERS ERROR:', err.message);
+        if (err.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: 'Duplicate users found in selected list',
+                error: 'Duplicate users found in selected list'
+            });
+        }
         return res.status(500).json({
             success: false,
-            message: err.message
+            message: 'Something went wrong',
+            error: 'Something went wrong'
         });
     }
 });
@@ -430,31 +478,53 @@ app.get("/ridesync/createride",isAuthenticated,(req,res)=>{
 })
 
 app.post("/ridesync/createride",isAuthenticated,async (req,res)=>{
-    const {ride}=req.body;
-    const sorcelocation=JSON.parse(ride.sorcelocation);
-    const destinationlocation=JSON.parse(ride.destinationlocation);
-    const newRide = new Ride({
-        adminId:req.user._id,
-        ridename:ride.ridename,
-        date:ride.date,
-        time:ride.time,
-        sorce:ride.sorce,
-        destination:ride.destination,
-        // rideDateTime : combineDateTime(ride.date, ride.time),
-        sorceLocation: {
-          type:'Point',
-          coordinates: sorcelocation.coordinates
-        },
-        destinationLocation: {
-          type:'Point',
-          coordinates: destinationlocation.coordinates
+    try {
+        const { ride = {} } = req.body;
+        const date = String(ride.date || '').trim();
+        const time = String(ride.time || '').trim();
+        const rideDateTime = new Date(`${date}T${time}`);
+
+        if (!date || !time || Number.isNaN(rideDateTime.getTime()) || rideDateTime <= new Date()) {
+            return res.status(400).json({
+                error: "Please select a future date and time"
+            });
         }
-    });
-    console.log(newRide);
-    data=await newRide.save()
-    await RideMember.insertOne({rideId:data._id,userId:req.user._id,role:"admin"})
-    req.flash("success","ride created...!")
-    res.redirect(`/ridesync/rideroom/${data._id.toString()}`);
+
+        const sorcelocation = JSON.parse(ride.sorcelocation || '{}');
+        const destinationlocation = JSON.parse(ride.destinationlocation || '{}');
+
+        if (
+            !Array.isArray(sorcelocation.coordinates) || sorcelocation.coordinates.length !== 2 ||
+            !Array.isArray(destinationlocation.coordinates) || destinationlocation.coordinates.length !== 2
+        ) {
+            return res.status(400).json({ error: "Invalid location data" });
+        }
+
+        const newRide = new Ride({
+            adminId:req.user._id,
+            ridename:ride.ridename,
+            date,
+            time,
+            sorce:ride.sorce,
+            destination:ride.destination,
+            sorceLocation: {
+              type:'Point',
+              coordinates: sorcelocation.coordinates
+            },
+            destinationLocation: {
+              type:'Point',
+              coordinates: destinationlocation.coordinates
+            }
+        });
+        console.log(newRide);
+        const data = await newRide.save();
+        await RideMember.insertOne({rideId:data._id,userId:req.user._id,role:"admin"});
+        req.flash("success","ride created...!");
+        return res.redirect(`/ridesync/rideroom/${data._id.toString()}`);
+    } catch (error) {
+        console.error('Create ride error:', error);
+        return res.status(400).json({ error: 'Invalid ride data' });
+    }
 })
 
 app.get("/ridesync/rideroom/:id", isAuthenticated,async (req,res)=>{
@@ -549,7 +619,7 @@ app.get("/ridesync/rideroom/:id/add-members",isAuthenticated,async (req,res)=>{
     const {id}=req.params;
     const rideroom=await RideMember.find({rideId:id}).populate("userId").populate("rideId");
     console.log(rideroom)
-    res.render("rides/add_members.ejs",{data:rideroom});
+    res.render("rides/add_members.ejs",{data:rideroom,id});
 })
 
 
