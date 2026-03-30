@@ -163,6 +163,8 @@ window.liveMarkers = {};   // userId → mapboxgl.Marker
 window.userRoutes = {};   // userId → { sourceId, casingId, lineId }
 window.routeFetching = {};   // userId → bool
 window._lastPos = {};   // userId → {lat, lng}  for heading calc
+window.activeRiderPopup = null;
+window.activeRiderPopupUserId = null;
 
 window._navVoiceEnabled = false;
 window._lastSpokenInstruction = null;
@@ -272,6 +274,39 @@ function moveMarkerSmooth(marker, nextLngLat) {
   };
 
   requestAnimationFrame(tick);
+}
+
+function closeActiveRiderPopup() {
+  if (window.activeRiderPopup) {
+    window.activeRiderPopup.remove();
+    window.activeRiderPopup = null;
+    window.activeRiderPopupUserId = null;
+  }
+}
+
+function openRiderNamePopup(userId, lngLat, riderName) {
+  if (
+    window.activeRiderPopup &&
+    String(window.activeRiderPopupUserId) === String(userId)
+  ) {
+    closeActiveRiderPopup();
+    return;
+  }
+
+  closeActiveRiderPopup();
+
+  const popup = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 28,
+    className: 'rider-name-popup'
+  })
+    .setLngLat(lngLat)
+    .setHTML(`<div class="rider-name-popup__text">${riderName}</div>`)
+    .addTo(map);
+
+  window.activeRiderPopup = popup;
+  window.activeRiderPopupUserId = userId;
 }
 
 // ── 5. Directions API ────────────────────────────────────────────────
@@ -523,6 +558,10 @@ window.updateUserMarker = function updateUserMarker(userId, lat, lng, heading, s
       const el = window.liveMarkers[userId].getElement();
       el.querySelector('svg').style.transform = `rotate(${heading}deg)`;
     }
+
+    if (window.activeRiderPopup && String(window.activeRiderPopupUserId) === String(userId)) {
+      window.activeRiderPopup.setLngLat([lng, lat]);
+    }
   } else {
     // ── First valid GPS fix: build the vehicle element ──
     const wrap = document.createElement('div');
@@ -537,8 +576,17 @@ window.updateUserMarker = function updateUserMarker(userId, lat, lng, heading, s
         ${memberMeta.avatar
           ? `<img src="${memberMeta.avatar}" alt="${memberMeta.name}" class="rider-avatar" />`
           : `<span class="rider-initial">${memberMeta.initials}</span>`}
-        <span class="rider-name">${memberMeta.name}</span>
       </div>`;
+
+    wrap.addEventListener('click', (event) => {
+      event.stopPropagation();
+      wrap.classList.add('is-clicked');
+      setTimeout(() => wrap.classList.remove('is-clicked'), 150);
+
+      const marker = window.liveMarkers[userId];
+      if (!marker) return;
+      openRiderNamePopup(userId, marker.getLngLat(), memberMeta.name);
+    });
 
     // Smooth rotation transition on the inner SVG
     wrap.querySelector('svg').style.cssText = `
@@ -552,10 +600,6 @@ window.updateUserMarker = function updateUserMarker(userId, lat, lng, heading, s
       anchor: 'center'
     })
       .setLngLat([lng, lat])
-      .setPopup(
-        new mapboxgl.Popup({ offset: 20, closeButton: false })
-          .setHTML(`<b>${memberMeta.name}</b><br/>Live location`)
-      )
       .addTo(window.map);
   }
 
@@ -581,6 +625,9 @@ window.removeUser = function removeUser(userId) {
     delete window.userRoutes[userId];
   }
   if (window.liveMarkers[userId]) {
+    if (window.activeRiderPopup && String(window.activeRiderPopupUserId) === String(userId)) {
+      closeActiveRiderPopup();
+    }
     window.liveMarkers[userId].remove();
     delete window.liveMarkers[userId];
   }
@@ -628,6 +675,10 @@ map.on('load', () => {
 
   // ── Draw the main blue route ──
   drawMainRoute();
+});
+
+map.on('click', () => {
+  closeActiveRiderPopup();
 });
 
 /* ═══════════════════════════════════════════════

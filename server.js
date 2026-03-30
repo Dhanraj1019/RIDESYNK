@@ -208,6 +208,43 @@ function sanitizeSosLocation(raw) {
     };
 }
 
+async function enrichSosLocationAddress(location) {
+    if (!location || typeof location !== "object") {
+        return location;
+    }
+
+    if (location.address) {
+        return location;
+    }
+
+    if (!Number.isFinite(location.lat) || !Number.isFinite(location.lng) || !map_token) {
+        return location;
+    }
+
+    try {
+        const reverseUrl =
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${location.lng},${location.lat}.json` +
+            `?access_token=${map_token}&types=poi,address,place&limit=1`;
+
+        const response = await fetch(reverseUrl);
+        const data = await response.json();
+        const feature = Array.isArray(data && data.features) ? data.features[0] : null;
+        const readable = String((feature && (feature.place_name || feature.text)) || "").trim();
+
+        if (!readable) {
+            return location;
+        }
+
+        return {
+            lat: location.lat,
+            lng: location.lng,
+            address: readable.slice(0, 200)
+        };
+    } catch (error) {
+        return location;
+    }
+}
+
 function getSafeUserName(user) {
     if (!user) return "Unknown rider";
     const first = String(user.firstname || "").trim();
@@ -217,6 +254,8 @@ function getSafeUserName(user) {
 }
 
 function toSosPayload(doc) {
+    const location = doc && doc.location && typeof doc.location === "object" ? doc.location : undefined;
+
     return {
         _id: doc._id,
         rideId: doc.rideId,
@@ -224,7 +263,14 @@ function toSosPayload(doc) {
         userName: doc.userId && doc.userId._id ? getSafeUserName(doc.userId) : "Unknown rider",
         status: doc.status,
         createdAt: doc.createdAt,
-        resolvedAt: doc.resolvedAt
+        resolvedAt: doc.resolvedAt,
+        location: location
+            ? {
+                lat: location.lat,
+                lng: location.lng,
+                address: location.address
+            }
+            : undefined
     };
 }
 
@@ -290,7 +336,10 @@ app.get("/ridesync/user/complete-profile",isAuthenticated,async (req,res,next)=>
     }
 })
 app.get("/ridesync/login",(req,res)=>{
-    res.render("signup/login_screen.ejs");
+    if(!req.user){
+        res.render("signup/login_screen.ejs");
+    }
+    res.redirect("/ridesync/home")
 })
 
 app.post(
@@ -614,7 +663,7 @@ app.get("/sos/ride/:rideId", isAuthenticated, async (req, res) => {
         const alerts = await Sos.find({ rideId })
             .populate({ path: "userId", select: "firstname lastname username" })
             .sort({ createdAt: -1 })
-            .select("rideId userId status createdAt resolvedAt");
+            .select("rideId userId status createdAt resolvedAt location");
 
         const active = [];
         const resolved = [];
@@ -634,11 +683,18 @@ app.get("/sos/ride/:rideId", isAuthenticated, async (req, res) => {
     }
 });
 
-app.post("/sos/trigger", isAuthenticated, async (req, res) => {
+const createSOSHandler = async (req, res) => {
     try {
         const rideId = String(req.body && req.body.rideId || "").trim();
         if (!mongoose.Types.ObjectId.isValid(rideId)) {
             return res.status(400).json({ success: false, message: "Failed to send SOS" });
+        }
+
+        const location = await enrichSosLocationAddress(
+            sanitizeSosLocation(req.body && req.body.location)
+        );
+        if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
+            return res.status(400).json({ success: false, message: "Location is required to send SOS" });
         }
 
         const ride = await Ride.findById(rideId).select("_id");
@@ -676,12 +732,12 @@ app.post("/sos/trigger", isAuthenticated, async (req, res) => {
             userId: req.user._id,
             status: "active",
             resolvedAt: null,
-            location: sanitizeSosLocation(req.body && req.body.location)
+            location
         });
 
         const alert = await Sos.findById(sos._id)
             .populate({ path: "userId", select: "firstname lastname username" })
-            .select("rideId userId status createdAt resolvedAt");
+            .select("rideId userId status createdAt resolvedAt location");
 
         const members = await RideMember.find({
             rideId: ride._id,
@@ -693,12 +749,20 @@ app.post("/sos/trigger", isAuthenticated, async (req, res) => {
             .map((m) => String(m.userId))
             .filter((id) => id !== String(req.user._id));
 
-        io.to(String(ride._id)).emit("sos:created", {
+        const sosPayload = {
             message: SOS_NOTIFICATION_MESSAGE,
             rideId: String(ride._id),
             recipientUserIds,
+            location: {
+                lat: location.lat,
+                lng: location.lng,
+                address: location.address
+            },
             sos: toSosPayload(alert)
-        });
+        };
+
+        io.to(String(ride._id)).emit("sos:triggered", sosPayload);
+        io.to(String(ride._id)).emit("sos:created", sosPayload);
 
         res.status(201).json({ success: true, message: "SOS sent", sos: toSosPayload(alert) });
     } catch (error) {
@@ -707,7 +771,10 @@ app.post("/sos/trigger", isAuthenticated, async (req, res) => {
         }
         res.status(500).json({ success: false, message: "Failed to send SOS" });
     }
-});
+};
+
+app.post("/sos/trigger", isAuthenticated, createSOSHandler);
+app.post("/sos/create", isAuthenticated, createSOSHandler);
 
 app.post("/sos/resolve/:id", isAuthenticated, async (req, res) => {
     try {
@@ -734,10 +801,11 @@ app.post("/sos/resolve/:id", isAuthenticated, async (req, res) => {
 
         const resolved = await Sos.findById(alert._id)
             .populate({ path: "userId", select: "firstname lastname username" })
-            .select("rideId userId status createdAt resolvedAt");
+            .select("rideId userId status createdAt resolvedAt location");
 
         io.to(String(alert.rideId)).emit("sos:resolved", {
             rideId: String(alert.rideId),
+            sosId: String(alert._id),
             sos: toSosPayload(resolved)
         });
 

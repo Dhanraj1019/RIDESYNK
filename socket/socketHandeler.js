@@ -1,5 +1,6 @@
 const Message = require("../models/message.js");
 const RideMember = require("../models/ride_member.js");
+const mongoose = require("mongoose");
 
 // In-memory ride live state:
 // rideId -> Map<userId, { userId, lat, lng, heading, speed, updatedAt }>
@@ -14,15 +15,30 @@ const socketSessionState = new Map();
 
 function normalizeRideId(payload) {
 	if (!payload) return "";
-	if (typeof payload === "string") return payload;
+	if (typeof payload === "string") return String(payload).trim();
 	if (typeof payload === "object") return String(payload.rideId || payload.roomId || "");
 	return "";
 }
 
 function normalizeUserId(payload) {
 	if (!payload) return "";
-	if (typeof payload === "object") return String(payload.userId || "");
+	if (typeof payload === "object") return String(payload.userId || "").trim();
 	return "";
+}
+
+async function canJoinRideRoom(rideId, userId) {
+	if (!mongoose.Types.ObjectId.isValid(rideId) || !mongoose.Types.ObjectId.isValid(userId)) {
+		return false;
+	}
+
+	const isMember = await RideMember.exists({
+		rideId,
+		userId,
+		status: "active",
+		isActive: true
+	});
+
+	return Boolean(isMember);
 }
 
 function getOrCreateRideActiveMap(rideId) {
@@ -125,13 +141,28 @@ function registerSocketHandlers(io) {
 		const handleJoinRide = async (joinPayload) => {
 			const rideId = normalizeRideId(joinPayload);
 			const userId = normalizeUserId(joinPayload);
-			if (!rideId) return;
+			if (!rideId || !userId) {
+				socket.emit("sos:error", { message: "Invalid ride session" });
+				return;
+			}
+
+			const sessionUserId = socket.request && socket.request.session && socket.request.session.passport
+				? String(socket.request.session.passport.user || "")
+				: "";
+			if (sessionUserId && sessionUserId !== userId) {
+				socket.emit("sos:error", { message: "Unauthorized listener" });
+				return;
+			}
+
+			const authorized = await canJoinRideRoom(rideId, userId);
+			if (!authorized) {
+				socket.emit("sos:error", { message: "Not allowed in this ride" });
+				return;
+			}
 
 			socket.join(rideId);
-			if (userId) {
-				socketSessionState.set(socket.id, { rideId, userId });
-				addActiveSocketToRide(rideId, userId, socket.id);
-			}
+			socketSessionState.set(socket.id, { rideId, userId });
+			addActiveSocketToRide(rideId, userId, socket.id);
 			console.log("Joined ride:", rideId);
 
 			const perRide = rideLocationState.get(rideId);

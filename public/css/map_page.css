@@ -868,21 +868,24 @@ body.live-tracking-page {
 .rider-tag {
   position: absolute;
   left: 50%;
-  bottom: -28px;
+  bottom: -20px;
   transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  max-width: 170px;
-  padding: 2px 8px 2px 3px;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  background: rgba(16, 24, 40, 0.85);
+  border: 2px solid #ffffff;
+  background: #0f172a;
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
-  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
 .rider-tag.self {
@@ -891,27 +894,75 @@ body.live-tracking-page {
 
 .rider-avatar,
 .rider-initial {
-  width: 16px;
-  height: 16px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .rider-avatar {
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.75);
 }
 
 .rider-initial {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 13px;
 }
 
 .rider-name {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.vehicle-wrap.is-clicked .rider-tag {
+  transform: translateX(-50%) scale(0.94);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vehicle-wrap:hover .rider-tag {
+    transform: translateX(-50%) scale(1.06);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.mapboxgl-popup.rider-name-popup {
+  pointer-events: none;
+}
+
+.mapboxgl-popup.rider-name-popup .mapboxgl-popup-content {
+  animation: riderNamePopupIn 0.16s ease-out;
+  transform-origin: center bottom;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.mapboxgl-popup.rider-name-popup .mapboxgl-popup-tip {
+  border-top-color: #ffffff;
+}
+
+.rider-name-popup__text {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+@keyframes riderNamePopupIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ══════════════════════════════════════════════

@@ -6,6 +6,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 const socket = io();   // relative URL — no hardcoded localhost
+window.ridesyncSocket = socket;
 const ride_id = rideData._id;
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -43,8 +44,33 @@ socket.on('ride:activeUsers:update', updateActiveUsersCounter);
 // ── GPS tracking ─────────────────────────────────────────────────────
 let watchId = null;
 
-function startLiveLocation() {
+function showLocationMessage(message) {
+  if (window.RideSyncLocationPermission && typeof window.RideSyncLocationPermission.showToast === 'function') {
+    window.RideSyncLocationPermission.showToast(message);
+  } else {
+    console.warn(message);
+  }
+}
+
+async function ensureTrackingPermission() {
+  if (!window.RideSyncLocationPermission || typeof window.RideSyncLocationPermission.queryPermission !== 'function') {
+    return true;
+  }
+
+  const status = await window.RideSyncLocationPermission.queryPermission();
+  if (status === 'granted') {
+    return true;
+  }
+
+  showLocationMessage('Location access is required');
+  return false;
+}
+
+async function startLiveLocation() {
   if (!navigator.geolocation) { console.warn('Geolocation not supported'); return; }
+  const allowed = await ensureTrackingPermission();
+  if (!allowed) return;
+
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
 
   watchId = navigator.geolocation.watchPosition(
@@ -64,8 +90,13 @@ function startLiveLocation() {
         window.updateUserMarker(userid, lat, lng, heading, speed);
       }
     },
-    (err) => console.warn('GPS error:', err),
-    { enableHighAccuracy: true, maximumAge: 5000 }
+    (err) => {
+      if (err && err.code === 1) showLocationMessage('Location permission denied');
+      else if (err && err.code === 2) showLocationMessage('Unable to fetch location');
+      else if (err && err.code === 3) showLocationMessage('Turn on GPS for better accuracy');
+      else showLocationMessage('Unable to fetch location');
+    },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
   );
 }
 

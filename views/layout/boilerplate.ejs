@@ -69,8 +69,14 @@
     <link href="/css/footer.css" rel="stylesheet">
     <link href="/css/404.css" rel="stylesheet">
     <link href="/css/index.css" rel="stylesheet">
+    <% if (curruser) { %>
+        <link href="/css/location_permission.css" rel="stylesheet">
+    <% } %>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <% if (curruser) { %>
+        <script src="/js/location_permission.js"></script>
+    <% } %>
 </head>
     <body>
  
