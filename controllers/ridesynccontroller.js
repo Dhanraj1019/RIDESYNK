@@ -42,6 +42,7 @@ module.exports.profile=async (req,res)=>{
     const id=req.user._id;
     const data=await User.findOne({_id:id});
     const rides=await RideMember.find({userId:req.user._id});
+    console.log(data);
     // FIX: added return
     return res.render("profile/profile.ejs",{data,rides});
 };

@@ -36,7 +36,9 @@
           <p class="stat-label">Rides</p>
         </article>
         <article class="stat-card">
-          <p class="stat-value">3.8k km</p>
+          <p class="stat-value">
+            <%=data.travel.totalDistance ? (data.travel.totalDistance / 1000).toFixed(2) : 0%> km
+          </p>
           <p class="stat-label">Distance</p>
         </article>
         <article class="stat-card">

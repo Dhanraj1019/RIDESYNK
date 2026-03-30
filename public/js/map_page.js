@@ -15,6 +15,11 @@ const source_coords = rideData.sorceLocation.coordinates;       // [lng, lat]
 const dest_coords = rideData.destinationLocation.coordinates; // [lng, lat]
 
 function haversineKm(lat1, lng1, lat2, lng2) {
+  return haversineMeters(lat1, lng1, lat2, lng2) / 1000;
+}
+
+// Reusable distance helper used by route and ride-session tracking.
+function haversineMeters(lat1, lng1, lat2, lng2) {
   const toRad = d => d * Math.PI / 180;
   const R = 6371;
   const dLat = toRad(lat2 - lat1);
@@ -24,7 +29,7 @@ function haversineKm(lat1, lng1, lat2, lng2) {
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
     Math.sin(dLng / 2) * Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return R * c * 1000;
 }
 
 function formatDistanceLabel(km) {
@@ -101,6 +106,272 @@ function refreshSelfEta() {
 
   updateEtaUI(window._selfMapboxEtaSec);
 }
+
+function renderLiveDistance(km) {
+  const el = document.getElementById('liveDistanceValue');
+  if (!el) return;
+  el.textContent = `Distance: ${km.toFixed(2)} km`;
+}
+
+window.RideDistanceTracker = (() => {
+  const LOCATION_THROTTLE_MS = 2500;
+  const API_DEBOUNCE_MS = 12000;
+  const RETRY_MS = 8000;
+  const MIN_MOVE_METERS = 5;
+  const MAX_GPS_JUMP_METERS = 450;
+  const IDLE_TIMEOUT_MS = 60000;
+
+  const endpoint = `/ridesync/ride/${rideData._id}/update-distance`;
+  const queueKey = `ridesync.distance.queue.${rideData._id}.${userid}`;
+  const initialDistanceMeters = (() => {
+    if (currentUserTravel && typeof currentUserTravel === 'object') {
+      const km = Number(currentUserTravel.totalDistance);
+      return Number.isFinite(km) && km > 0 ? km * 1000 : 0;
+    }
+    if (typeof currentUserTravel === 'number' && Number.isFinite(currentUserTravel) && currentUserTravel > 0) {
+      return currentUserTravel * 1000;
+    }
+    return 0;
+  })();
+
+  const state = {
+    isTracking: false,
+    isIdle: false,
+    totalDistance: 0,
+    lastPosition: null,
+    startedAt: 0,
+    lastMovementAt: 0,
+    lastProcessedAt: 0
+  };
+
+  let syncTimer = null;
+  let retryTimer = null;
+  let uiRaf = null;
+
+  function roundKm(valueKm) {
+    return Math.round(valueKm * 100) / 100;
+  }
+
+  function toKm(meters) {
+    return roundKm(meters / 1000);
+  }
+
+  function getDurationSec() {
+    if (!state.startedAt) return 0;
+    return Math.max(0, Math.round((Date.now() - state.startedAt) / 1000));
+  }
+
+  function persistQueue(items) {
+    try {
+      localStorage.setItem(queueKey, JSON.stringify(items));
+    } catch (err) {
+      console.warn('Failed to persist distance queue', err);
+    }
+  }
+
+  function readQueue() {
+    try {
+      const raw = localStorage.getItem(queueKey);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function queuePayload(payload) {
+    const queue = readQueue();
+    queue.push(payload);
+    // Keep queue bounded and avoid unbounded localStorage growth.
+    persistQueue(queue.slice(-30));
+  }
+
+  function clearRetryTimer() {
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+  }
+
+  function clearSyncTimer() {
+    if (syncTimer) {
+      clearTimeout(syncTimer);
+      syncTimer = null;
+    }
+  }
+
+  function paintDistance() {
+    if (uiRaf) cancelAnimationFrame(uiRaf);
+    uiRaf = requestAnimationFrame(() => {
+      renderLiveDistance(toKm(state.totalDistance));
+    });
+  }
+
+  function buildPayload() {
+    return {
+      rideId: String(rideData._id),
+      distance: toKm(state.totalDistance),
+      duration: getDurationSec()
+    };
+  }
+
+  async function postPayload(payload) {
+    if (!navigator.onLine) {
+      queuePayload(payload);
+      return false;
+    }
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        queuePayload(payload);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      queuePayload(payload);
+      return false;
+    }
+  }
+
+  async function flushQueue() {
+    const queue = readQueue();
+    if (!queue.length || !navigator.onLine) return;
+
+    const keep = [];
+    for (const payload of queue) {
+      const ok = await postPayload(payload);
+      if (!ok) keep.push(payload);
+    }
+    persistQueue(keep);
+  }
+
+  async function syncNow() {
+    clearSyncTimer();
+    const payload = buildPayload();
+    const success = await postPayload(payload);
+    if (success) {
+      await flushQueue();
+      clearRetryTimer();
+      return;
+    }
+
+    clearRetryTimer();
+    retryTimer = setTimeout(() => {
+      syncNow();
+    }, RETRY_MS);
+  }
+
+  function scheduleSync() {
+    clearSyncTimer();
+    syncTimer = setTimeout(() => {
+      syncNow();
+    }, API_DEBOUNCE_MS);
+  }
+
+  function reset(initialMeters = 0) {
+    state.totalDistance = Math.max(0, Number(initialMeters) || 0);
+    state.lastPosition = null;
+    state.lastMovementAt = Date.now();
+    state.lastProcessedAt = 0;
+    state.startedAt = Date.now();
+    state.isIdle = false;
+    paintDistance();
+  }
+
+  function start() {
+    if (state.isTracking) return;
+    state.isTracking = true;
+    if (!state.startedAt) {
+      reset(initialDistanceMeters);
+    }
+    flushQueue();
+  }
+
+  function stop(options = {}) {
+    state.isTracking = false;
+    clearSyncTimer();
+    if (options.flush) {
+      syncNow();
+    }
+  }
+
+  function onPosition(position) {
+    if (!state.isTracking) return;
+
+    const lat = Number(position && position.lat);
+    const lng = Number(position && position.lng);
+    const accuracy = Number(position && position.accuracy);
+    const now = Number(position && position.timestamp) || Date.now();
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if (now - state.lastProcessedAt < LOCATION_THROTTLE_MS) return;
+    state.lastProcessedAt = now;
+
+    if (!state.lastPosition) {
+      state.lastPosition = { lat, lng };
+      state.lastMovementAt = now;
+      return;
+    }
+
+    const segmentMeters = haversineMeters(state.lastPosition.lat, state.lastPosition.lng, lat, lng);
+
+    if (segmentMeters < MIN_MOVE_METERS) {
+      if (now - state.lastMovementAt > IDLE_TIMEOUT_MS) {
+        state.isIdle = true;
+      }
+      return;
+    }
+
+    if (segmentMeters > MAX_GPS_JUMP_METERS && (!Number.isFinite(accuracy) || accuracy > 30)) {
+      state.lastPosition = { lat, lng };
+      return;
+    }
+
+    if (segmentMeters > MAX_GPS_JUMP_METERS) {
+      state.lastPosition = { lat, lng };
+      return;
+    }
+
+    state.isIdle = false;
+    state.totalDistance += segmentMeters;
+    state.lastPosition = { lat, lng };
+    state.lastMovementAt = now;
+
+    paintDistance();
+    scheduleSync();
+  }
+
+  function getState() {
+    return {
+      isTracking: state.isTracking,
+      totalDistance: state.totalDistance,
+      lastPosition: state.lastPosition
+    };
+  }
+
+  window.addEventListener('online', () => {
+    flushQueue();
+    syncNow();
+  });
+
+  return {
+    start,
+    stop,
+    reset,
+    onPosition,
+    getState,
+    flushNow: syncNow
+  };
+})();
 
 // Show quick straight-line distance immediately, then replace with route distance.
 updateDistanceUI(

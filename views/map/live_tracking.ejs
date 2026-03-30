@@ -10,6 +10,7 @@
   const map_token = "<%= map_token %>";
   const rideData  = <%- JSON.stringify(data) %>;
   const userid    = "<%= curruser._id %>";
+  const currentUserTravel = <%- JSON.stringify(curruser && curruser.travel ? curruser.travel : null) %>;
   const rideMembers = <%- JSON.stringify(
     (members || []).map((m) => {
       const u = m && m.userId ? m.userId : {};
@@ -43,7 +44,7 @@
 </nav>
 
 <!-- LIVE BADGE -->
-<div class="live-badge"><span class="live-dot"></span> Live Tracking</div>
+<div class="live-badge"><span class="live-dot"></span> Live Tracking <span id="liveDistanceValue">Distance: 0.00 km</span></div>
 
 <!-- NAVIGATION DIRECTION BAR -->
 <div class="nav-bar-container" id="navBarContainer" style="display:none;">

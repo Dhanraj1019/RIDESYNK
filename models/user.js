@@ -45,9 +45,19 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
 
-  travel:{
-    type:Number,
-    default:0
+  travel: {
+    totalDistance: {
+      type: Number,
+      default: 0
+    },
+    duration: {
+      type: Number,
+      default: 0
+    },
+    updatedAt: {
+      type: Date,
+      default: null
+    }
   },
   // 🔴 Deletion lifecycle
   status: {
@@ -77,6 +87,8 @@ const userSchema = new mongoose.Schema({
   // }
 
 }, { timestamps: true });
+
+userSchema.index({ "travel.updatedAt": -1 });
 
 // adds hash + salt (password handled securely)
 userSchema.plugin(passportLocalMongoose);

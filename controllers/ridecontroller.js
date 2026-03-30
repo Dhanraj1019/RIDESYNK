@@ -1,9 +1,17 @@
 const RideMember=require("../models/ride_member")
 const Ride=require("../models/ride");
+const User=require("../models/user");
 const mongoose=require("mongoose");
 const ExpressError=require("../utils/ExpressError.js");
 const {validateRideMember}=require("../utils/validateRideMember");
 const {ALLOW_MEMBER_CANCELLATION}=require("../utils/extra.js");
+const {haversineMeters}=require("../utils/haversine.js");
+
+const MAX_REASONABLE_SPEED_KMH = 220;
+
+function roundKm(value) {
+    return Math.round(value * 100) / 100;
+}
 
 module.exports.cancelride=async (req, res, next) => {
     try {
@@ -194,5 +202,95 @@ module.exports.sos=async (req, res, next) => {
         res.render("rides/sos.ejs", { data });
     } catch (error) {
         next(error);
+    }
+}
+
+module.exports.updateDistance = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { distance, duration, rideId } = req.body || {};
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid ride id" });
+        }
+
+        if (rideId && String(rideId) !== String(id)) {
+            return res.status(400).json({ success: false, message: "Ride id mismatch" });
+        }
+
+        const parsedDistanceKm = Number(distance);
+        const parsedDurationSec = Number(duration);
+
+        if (!Number.isFinite(parsedDistanceKm) || parsedDistanceKm < 0) {
+            return res.status(400).json({ success: false, message: "Invalid distance" });
+        }
+
+        if (!Number.isFinite(parsedDurationSec) || parsedDurationSec < 0) {
+            return res.status(400).json({ success: false, message: "Invalid duration" });
+        }
+
+        if (parsedDurationSec > 0 && parsedDistanceKm > 0) {
+            const avgSpeedKmh = parsedDistanceKm / (parsedDurationSec / 3600);
+            if (avgSpeedKmh > MAX_REASONABLE_SPEED_KMH) {
+                return res.status(400).json({ success: false, message: "Distance payload rejected" });
+            }
+        }
+
+        const ride = await Ride.findById(id).select("_id adminId sorceLocation destinationLocation");
+        if (!ride) {
+            return res.status(404).json({ success: false, message: "Ride not found" });
+        }
+
+        const isMember = await validateRideMember(ride._id, req.user._id);
+        if (!isMember) {
+            return res.status(403).json({ success: false, message: "Not allowed" });
+        }
+
+        // Optional hard ceiling from route geometry + tolerance to reduce fake client injection.
+        const src = ride.sorceLocation && Array.isArray(ride.sorceLocation.coordinates)
+            ? ride.sorceLocation.coordinates
+            : null;
+        const dst = ride.destinationLocation && Array.isArray(ride.destinationLocation.coordinates)
+            ? ride.destinationLocation.coordinates
+            : null;
+
+        if (src && dst && src.length === 2 && dst.length === 2) {
+            const directMeters = haversineMeters(src[1], src[0], dst[1], dst[0]);
+            const maxAllowedKm = (directMeters * 4) / 1000;
+            if (parsedDistanceKm > maxAllowedKm) {
+                return res.status(400).json({ success: false, message: "Distance exceeds allowed threshold" });
+            }
+        }
+
+        const user = await User.findById(req.user._id).select("travel");
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Backward compatibility for older numeric travel field.
+        if (!user.travel || typeof user.travel !== "object" || Array.isArray(user.travel)) {
+            user.travel = { totalDistance: 0, duration: 0, updatedAt: null };
+        }
+
+        const safeDistanceKm = roundKm(parsedDistanceKm);
+        const safeDurationSec = Math.max(0, Math.round(parsedDurationSec));
+
+        // Keep monotonic updates in case older payloads arrive out of order.
+        user.travel.totalDistance = Math.max(Number(user.travel.totalDistance) || 0, safeDistanceKm);
+        user.travel.duration = Math.max(Number(user.travel.duration) || 0, safeDurationSec);
+        user.travel.updatedAt = new Date();
+
+        await user.save();
+
+        return res.json({
+            success: true,
+            travel: {
+                totalDistance: user.travel.totalDistance,
+                duration: user.travel.duration,
+                updatedAt: user.travel.updatedAt
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: "Failed to update distance" });
     }
 }

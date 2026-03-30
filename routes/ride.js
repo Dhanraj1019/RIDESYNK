@@ -6,6 +6,9 @@ const {isAuthenticated}=require("../midelwear.js")
 router.route("/update-location/:rideId")
 .patch(isAuthenticated,ridecontroller.updatelocation);
 
+router.route("/:id/update-distance")
+.post(isAuthenticated,ridecontroller.updateDistance);
+
 router.route("/cancel/:rideId")
 .post(isAuthenticated,ridecontroller.cancelride);
 

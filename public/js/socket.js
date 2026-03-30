@@ -71,6 +71,10 @@ async function startLiveLocation() {
   const allowed = await ensureTrackingPermission();
   if (!allowed) return;
 
+  if (window.RideDistanceTracker && typeof window.RideDistanceTracker.start === 'function') {
+    window.RideDistanceTracker.start();
+  }
+
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
 
   watchId = navigator.geolocation.watchPosition(
@@ -84,6 +88,16 @@ async function startLiveLocation() {
       // Broadcast to other riders in this room.
       const payload = { rideId: ride_id, userId: userid, lat, lng, heading, speed };
       socket.emit('location:update', payload);
+
+      if (window.RideDistanceTracker && typeof window.RideDistanceTracker.onPosition === 'function') {
+        window.RideDistanceTracker.onPosition({
+          lat,
+          lng,
+          speed,
+          accuracy: pos.coords.accuracy,
+          timestamp: pos.timestamp || Date.now()
+        });
+      }
 
       // Render my own vehicle marker on my own map
       if (typeof window.updateUserMarker === 'function') {
@@ -128,6 +142,9 @@ socket.on('userLeft', removeRemoteUser);
 window.addEventListener('beforeunload', () => {
   socket.emit('leave:ride', { rideId: ride_id, userId: userid });
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  if (window.RideDistanceTracker && typeof window.RideDistanceTracker.stop === 'function') {
+    window.RideDistanceTracker.stop({ flush: true });
+  }
   socket.disconnect();
 });
 
