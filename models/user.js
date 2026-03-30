@@ -45,6 +45,10 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
 
+  travel:{
+    type:Number,
+    default:0
+  },
   // 🔴 Deletion lifecycle
   status: {
     type: String,

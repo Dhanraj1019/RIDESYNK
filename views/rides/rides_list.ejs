@@ -85,7 +85,7 @@
             </a>
 
             <% if (canCancelRide) { %>
-              <form action="/ridesync/cancel/<%= rides.rideId._id %>" method="POST" class="cancel-ride-form">
+              <form action="/ridesync/ride/cancel/<%= rides.rideId._id %>" method="POST" class="cancel-ride-form">
                 <button type="button" class="cancel-btn" data-rideid="<%= rides.rideId._id %>">Cancel Ride</button>
               </form>
             <% } %>
@@ -106,6 +106,6 @@
       </div>
     </div>
   </div>
-
+ 
   <script src="/js/rides_list.js"></script>
 </main>

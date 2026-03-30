@@ -52,6 +52,7 @@ body{
 
 /* HTML: <div class="loader"></div> */
 .loader {
+  z-index: 2000;
   height: 80px;
   aspect-ratio: 1;
   padding: 10px;

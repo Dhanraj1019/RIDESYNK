@@ -146,7 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
     routeSaveBtn.disabled = true;
 
     try {
-      const response = await fetch(`/ride/update-location/${rideId}`, {
+      const response = await fetch(`/ridesync/ride/update-location/${rideId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json"
