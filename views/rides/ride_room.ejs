@@ -25,7 +25,7 @@
 
   <!-- Route Summary -->
   <% const isRideAdmin = curruser && data && data.adminId && data.adminId.toString() === curruser._id.toString(); %>
-  <div class="route-card" id="routeCard" data-rideid="<%= data._id %>">
+  <div class="route-card" id="routeCard" data-rideid="<%= data._id %>" data-currentuserid="<%= curruser ? curruser._id : '' %>">
     <% if (isRideAdmin) { %>
       <button class="route-edit-btn" id="routeEditBtn" type="button" aria-label="Edit source and destination">
         <i class="bi bi-pencil-square"></i>
@@ -112,7 +112,7 @@
       </svg>
       Add
     </button>
-    <button class="action-btn action-default" onclick="window.location.href='/ridesync/rideroom/<%= data._id %>/sosalerts'">
+    <button class="action-btn action-default" onclick="window.location.href='/ridesync/rideroom/<%= data._id %>/sos'">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -121,6 +121,7 @@
       SOS Log
     </button>
   </div>
+
   <div class="ride_link mb-2" style="display: flex; justify-content: space-between;">
     <div class="linkfield">
       <input type="text" id="rideLinkInput" value="http://localhost:8080/ridesync/rideroom/add-member/link/<%=data._id%>" readonly />
@@ -158,6 +159,15 @@
         </div>
       </div>
     <% }) %>
+  </div>
+
+  <div id="sosOverlay" class="sos-overlay" aria-hidden="true">
+    <div class="sos-overlay-card">
+      <h2>Sending SOS...</h2>
+      <p>Alert will be sent automatically in</p>
+      <div id="sosCountdown" class="sos-countdown">5</div>
+      <button id="sosCancelBtn" type="button" class="sos-cancel-btn">Cancel</button>
+    </div>
   </div>
   
 </div>

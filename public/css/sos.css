@@ -1,0 +1,303 @@
+.sos-page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 3.6rem 1rem 1.4rem;
+}
+
+.sos-page-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.sos-page-header h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.sos-page-header p {
+  margin: 0.15rem 0 0;
+  color: #6b7280;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.sos-back-link {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111827;
+  background: #fff;
+  text-decoration: none;
+}
+
+.sos-trigger-wrap {
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fff5f5, #fef2f2);
+  padding: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.sos-trigger-btn {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  min-height: 48px;
+  color: #fff;
+  background: linear-gradient(130deg, #b91c1c, #ef4444);
+  font-size: 0.95rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 20px rgba(185, 28, 28, 0.22);
+}
+
+.sos-trigger-btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.sos-trigger-btn.loading::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-left: 0.35rem;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  animation: sosSpin 0.9s linear infinite;
+}
+
+.sos-trigger-btn.active-state {
+  background: linear-gradient(130deg, #991b1b, #dc2626);
+}
+
+.sos-helper-text {
+  margin: 0.55rem 0 0;
+  color: #7f1d1d;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.sos-error-text {
+  min-height: 1rem;
+  margin: 0.35rem 0 0;
+  color: #b91c1c;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.sos-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0.85rem;
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.06);
+}
+
+.sos-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.sos-panel-head h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.sos-refresh-btn {
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+  color: #111827;
+  border-radius: 9px;
+  min-height: 34px;
+  padding: 0 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.sos-list-block + .sos-list-block {
+  margin-top: 0.85rem;
+}
+
+.sos-list-block h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 780;
+  color: #374151;
+}
+
+.sos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sos-empty {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 0.73rem;
+}
+
+.sos-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  padding: 0.65rem;
+}
+
+.sos-card.active {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.sos-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.sos-name {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #111827;
+  font-weight: 790;
+}
+
+.sos-time {
+  margin: 0.22rem 0 0;
+  font-size: 0.71rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.sos-status {
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sos-status.active {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.sos-status.resolved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.sos-resolve-btn {
+  margin-top: 0.5rem;
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+  color: #111827;
+  border-radius: 9px;
+  min-height: 32px;
+  padding: 0 0.62rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.sos-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: radial-gradient(circle at center, rgba(220, 38, 38, 0.75), rgba(127, 29, 29, 0.96));
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.24s ease, visibility 0.24s ease;
+}
+
+.sos-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sos-overlay-card {
+  width: min(100%, 350px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 18px;
+  text-align: center;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(6px);
+  padding: 1.2rem;
+  animation: sosPop 0.26s ease;
+}
+
+.sos-overlay-card h2 {
+  margin: 0;
+  font-size: 1.24rem;
+  font-weight: 900;
+}
+
+.sos-overlay-card p {
+  margin: 0.35rem 0 0;
+  font-size: 0.83rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.sos-countdown {
+  font-size: 4.2rem;
+  line-height: 1;
+  font-weight: 900;
+  margin: 0.55rem 0 0.8rem;
+}
+
+.sos-cancel-btn {
+  border: none;
+  border-radius: 12px;
+  min-height: 42px;
+  min-width: 130px;
+  background: #d1d5db;
+  color: #111827;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+@keyframes sosPop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sosSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 480px) {
+  .sos-countdown {
+    font-size: 3.4rem;
+  }
+}

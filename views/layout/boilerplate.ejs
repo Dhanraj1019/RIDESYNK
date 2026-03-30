@@ -15,9 +15,11 @@
             const _u = (originalUrl || '').toLowerCase();
             const _isLogin = _u.endsWith('/login');
             const _isSignupFlow = _u.endsWith('/signup');
+            const _iscompleteProfile = _u.endsWith('/complete-profile');
             const _isHome = _u.endsWith('/home') || _u.endsWith('/saveprofile');
             const _isCreateRide = _u.endsWith('/createride');
             const _isRideRoom = /^\/ridesync\/rideroom\/[^/]+$/.test(_u);
+            const _isSosPage = /^\/ridesync\/rideroom\/[^/]+\/sos$/.test(_u);
             const _isLiveTracking = /^\/ridesync\/rideroom\/[^/]+\/live-tracking$/.test(_u);
             const _isAddMembers = /^\/ridesync\/rideroom\/[^/]+\/add-members$/.test(_u);
             const _isRidesList = /^\/ridesync\/[^/]+\/rides$/.test(_u);
@@ -30,7 +32,7 @@
         <% if (_isLogin || _isSignupFlow) { %>
             <link href="/css/login_screen.css" rel="stylesheet">
         <% } %>
-        <% if (_isSignupFlow) { %>
+        <% if (_iscompleteProfile) { %>
             <link href="/css/complete_profile.css" rel="stylesheet">
         <% } %>
         <% if (_isHome) { %>
@@ -41,6 +43,9 @@
         <% } %>
         <% if (_isRideRoom) { %>
             <link href="/css/ride_room.css" rel="stylesheet">
+        <% } %>
+        <% if (_isRideRoom || _isSosPage) { %>
+            <link href="/css/sos.css" rel="stylesheet">
         <% } %>
         <% if (_isCreateRide) { %>
             <link href="/css/create_ride.css" rel="stylesheet">
@@ -83,6 +88,10 @@
         <script src="/js/add_members.js"></script>
         <script src="/js/home_dashboard.js"></script>
         <script src="/js/create_ride.js"></script>
+        <% if (_isRideRoom || _isSosPage) { %>
+            <script src="/socket.io/socket.io.js"></script>
+            <script src="/js/sos.js"></script>
+        <% } %>
         
         
         <script>

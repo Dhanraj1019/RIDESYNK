@@ -29,6 +29,7 @@ const User=require("./models/user.js");
 const Ride=require("./models/ride.js");
 const Message=require("./models/message.js");
 const RideMember=require("./models/ride_member.js");
+const Sos=require("./models/sos.js");
 const registerSocketHandlers = require("./socket/socketHandeler.js");
 
 const mbxGeocoding = require("@mapbox/mapbox-sdk/services/geocoding");
@@ -153,6 +154,7 @@ server.listen(8080,()=>{
 })
 
 registerSocketHandlers(io);
+app.set("io", io);
 
 // server.listen(8080, () => {
 //   console.log("Server running on port 8080");
@@ -177,6 +179,63 @@ main().then((res)=>{
 }).catch((err)=>{
     console.log("error in mongoose connection ", err);
 })
+
+const SOS_COOLDOWN_MS = 15000;
+const SOS_NOTIFICATION_MESSAGE = "SOS Alert: A rider needs help. Please contact them immediately.";
+
+function sanitizeSosLocation(raw) {
+    if (!raw || typeof raw !== "object") {
+        return undefined;
+    }
+
+    const lat = Number(raw.lat);
+    const lng = Number(raw.lng);
+    const address = String(raw.address || "").trim().slice(0, 200);
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+
+    if (hasCoords && (lat < -90 || lat > 90 || lng < -180 || lng > 180)) {
+        return undefined;
+    }
+
+    if (!hasCoords && !address) {
+        return undefined;
+    }
+
+    return {
+        lat: hasCoords ? lat : undefined,
+        lng: hasCoords ? lng : undefined,
+        address: address || undefined
+    };
+}
+
+function getSafeUserName(user) {
+    if (!user) return "Unknown rider";
+    const first = String(user.firstname || "").trim();
+    const last = String(user.lastname || "").trim();
+    if (first || last) return `${first} ${last}`.trim();
+    return String(user.username || "Unknown rider").trim();
+}
+
+function toSosPayload(doc) {
+    return {
+        _id: doc._id,
+        rideId: doc.rideId,
+        userId: doc.userId && doc.userId._id ? doc.userId._id : doc.userId,
+        userName: doc.userId && doc.userId._id ? getSafeUserName(doc.userId) : "Unknown rider",
+        status: doc.status,
+        createdAt: doc.createdAt,
+        resolvedAt: doc.resolvedAt
+    };
+}
+
+async function validateRideMember(rideId, userId) {
+    return RideMember.exists({
+        rideId,
+        userId,
+        status: "active",
+        isActive: true
+    });
+}
 
 
 
@@ -205,10 +264,7 @@ app.post("/ridesync/signup",async (req,res,next)=>{
             }
             else{
                 req.flash("success","Welcome to ridesync...")
-                return res.render("profile/complete_profile.ejs", {
-                    user,
-                    isCompleteProfilePage: true
-                });
+                return res.redirect("/ridesync/user/complete-profile");
             }
         })
     }catch(error){
@@ -216,6 +272,23 @@ app.post("/ridesync/signup",async (req,res,next)=>{
     }
 })
 
+app.get("/ridesync/user/complete-profile",isAuthenticated,async (req,res,next)=>{
+    try{
+        const id = req.user._id;
+        const finddata=await User.findOne({_id:id});
+        console.log(finddata);
+        res.render("profile/complete_profile.ejs",{user:finddata});
+    }catch(err){
+        req.logOut((err)=>{
+            if(err){
+                next(err);
+            }
+            req.flash("success","you logout succesfully...")
+            res.redirect("/ridesync/login")
+        })
+        next(err);
+    }
+})
 app.get("/ridesync/login",(req,res)=>{
     res.render("signup/login_screen.ejs");
 })
@@ -503,6 +576,177 @@ app.get("/ridesync/rideroom/:id", isAuthenticated,async (req,res)=>{
     res.render("rides/ride_room.ejs",{data,members});
 })
 
+app.get("/ridesync/rideroom/:id/sos", isAuthenticated, async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return next(new ExpressErrror(400, "Invalid ride id"));
+        }
+
+        const data = await Ride.findById(id);
+        if (!data) {
+            return next(new ExpressErrror(404, "Ride not found"));
+        }
+
+        const isMember = await validateRideMember(data._id, req.user._id);
+        if (!isMember) {
+            return next(new ExpressErrror(403, "Not allowed"));
+        }
+
+        res.render("rides/sos.ejs", { data });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.get("/sos/ride/:rideId", isAuthenticated, async (req, res) => {
+    try {
+        const { rideId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(rideId)) {
+            return res.status(400).json({ success: false, message: "Failed to fetch SOS" });
+        }
+
+        const isMember = await validateRideMember(rideId, req.user._id);
+        if (!isMember) {
+            return res.status(403).json({ success: false, message: "Failed to fetch SOS" });
+        }
+
+        const alerts = await Sos.find({ rideId })
+            .populate({ path: "userId", select: "firstname lastname username" })
+            .sort({ createdAt: -1 })
+            .select("rideId userId status createdAt resolvedAt");
+
+        const active = [];
+        const resolved = [];
+
+        for (const alert of alerts) {
+            const formatted = toSosPayload(alert);
+            if (alert.status === "active") {
+                active.push(formatted);
+            } else {
+                resolved.push(formatted);
+            }
+        }
+
+        res.json({ success: true, active, resolved });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Failed to fetch SOS" });
+    }
+});
+
+app.post("/sos/trigger", isAuthenticated, async (req, res) => {
+    try {
+        const rideId = String(req.body && req.body.rideId || "").trim();
+        if (!mongoose.Types.ObjectId.isValid(rideId)) {
+            return res.status(400).json({ success: false, message: "Failed to send SOS" });
+        }
+
+        const ride = await Ride.findById(rideId).select("_id");
+        if (!ride) {
+            return res.status(404).json({ success: false, message: "Failed to send SOS" });
+        }
+
+        const isMember = await validateRideMember(ride._id, req.user._id);
+        if (!isMember) {
+            return res.status(403).json({ success: false, message: "Failed to send SOS" });
+        }
+
+        const activeSOS = await Sos.findOne({
+            rideId: ride._id,
+            userId: req.user._id,
+            status: "active"
+        }).select("_id");
+
+        if (activeSOS) {
+            return res.status(409).json({ success: false, message: "SOS already active" });
+        }
+
+        const recentSOS = await Sos.findOne({
+            rideId: ride._id,
+            userId: req.user._id,
+            createdAt: { $gte: new Date(Date.now() - SOS_COOLDOWN_MS) }
+        }).select("_id");
+
+        if (recentSOS) {
+            return res.status(429).json({ success: false, message: "Failed to send SOS" });
+        }
+
+        const sos = await Sos.create({
+            rideId: ride._id,
+            userId: req.user._id,
+            status: "active",
+            resolvedAt: null,
+            location: sanitizeSosLocation(req.body && req.body.location)
+        });
+
+        const alert = await Sos.findById(sos._id)
+            .populate({ path: "userId", select: "firstname lastname username" })
+            .select("rideId userId status createdAt resolvedAt");
+
+        const members = await RideMember.find({
+            rideId: ride._id,
+            status: "active",
+            isActive: true
+        }).select("userId");
+
+        const recipientUserIds = members
+            .map((m) => String(m.userId))
+            .filter((id) => id !== String(req.user._id));
+
+        io.to(String(ride._id)).emit("sos:created", {
+            message: SOS_NOTIFICATION_MESSAGE,
+            rideId: String(ride._id),
+            recipientUserIds,
+            sos: toSosPayload(alert)
+        });
+
+        res.status(201).json({ success: true, message: "SOS sent", sos: toSosPayload(alert) });
+    } catch (error) {
+        if (error && error.code === 11000) {
+            return res.status(409).json({ success: false, message: "SOS already active" });
+        }
+        res.status(500).json({ success: false, message: "Failed to send SOS" });
+    }
+});
+
+app.post("/sos/resolve/:id", isAuthenticated, async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Failed to resolve SOS" });
+        }
+
+        const alert = await Sos.findById(id);
+        if (!alert) {
+            return res.status(404).json({ success: false, message: "Failed to resolve SOS" });
+        }
+
+        const isMember = await validateRideMember(alert.rideId, req.user._id);
+        if (!isMember) {
+            return res.status(403).json({ success: false, message: "Failed to resolve SOS" });
+        }
+
+        if (alert.status !== "resolved") {
+            alert.status = "resolved";
+            alert.resolvedAt = new Date();
+            await alert.save();
+        }
+
+        const resolved = await Sos.findById(alert._id)
+            .populate({ path: "userId", select: "firstname lastname username" })
+            .select("rideId userId status createdAt resolvedAt");
+
+        io.to(String(alert.rideId)).emit("sos:resolved", {
+            rideId: String(alert.rideId),
+            sos: toSosPayload(resolved)
+        });
+
+        res.json({ success: true, message: "SOS resolved", sos: toSosPayload(resolved) });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Failed to resolve SOS" });
+    }
+});
+
 app.patch("/ride/update-location/:rideId", isAuthenticated, async (req, res) => {
     try {
         const { rideId } = req.params;
@@ -780,8 +1024,8 @@ app.get("/ridesync/test",async (req,res)=>{
     console.log(req.user);
 })
 
-app.get("/ridesync/:id/sosalerts",(req,res)=>{
-    next(new ExpressErrror(500,"this page is under process"))
+app.get("/ridesync/:id/sosalerts", isAuthenticated, (req,res)=>{
+    return res.redirect(`/ridesync/rideroom/${req.params.id}/sos`);
 })
 
 app.use((req,res,next)=>{

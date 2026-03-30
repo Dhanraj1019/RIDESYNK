@@ -1,0 +1,52 @@
+<% layout("/layout/boilerplate.ejs") %>
+
+<body>
+  <div class="sos-page" data-sos-rideid="<%= data._id %>" data-sos-userid="<%= curruser ? curruser._id : '' %>">
+    <div class="sos-page-header">
+      <a href="/ridesync/rideroom/<%= data._id %>" class="sos-back-link">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div>
+        <h1>SOS Center</h1>
+        <p><%= data.ridename %></p>
+      </div>
+    </div>
+
+    <section class="sos-trigger-wrap" data-sos-rideid="<%= data._id %>" data-sos-userid="<%= curruser ? curruser._id : '' %>">
+      <button id="sosTriggerBtn" type="button" class="sos-trigger-btn">
+        <i class="bi bi-exclamation-octagon-fill"></i>
+        Trigger SOS
+      </button>
+      <p class="sos-helper-text">Emergency alert reaches all riders in this ride.</p>
+      <p id="sosErrorText" class="sos-error-text" aria-live="polite"></p>
+    </section>
+
+    <section class="sos-panel" data-sos-panel data-sos-rideid="<%= data._id %>" data-sos-userid="<%= curruser ? curruser._id : '' %>">
+      <div class="sos-panel-head">
+        <h3>Ride SOS Alerts</h3>
+        <button id="sosRefreshBtn" type="button" class="sos-refresh-btn">Refresh</button>
+      </div>
+
+      <div class="sos-list-block">
+        <h4>Active SOS</h4>
+        <div id="sosActiveList" class="sos-list"></div>
+        <p id="sosActiveEmpty" class="sos-empty">No active SOS alerts</p>
+      </div>
+
+      <div class="sos-list-block">
+        <h4>Resolved SOS</h4>
+        <div id="sosResolvedList" class="sos-list"></div>
+        <p id="sosResolvedEmpty" class="sos-empty">No resolved SOS alerts</p>
+      </div>
+    </section>
+
+    <div id="sosOverlay" class="sos-overlay" aria-hidden="true">
+      <div class="sos-overlay-card">
+        <h2>Sending SOS...</h2>
+        <p>Alert will be sent automatically in</p>
+        <div id="sosCountdown" class="sos-countdown">5</div>
+        <button id="sosCancelBtn" type="button" class="sos-cancel-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+</body>
