@@ -52,7 +52,7 @@ const inviterouter=require("./routes/invite.routes.js");
 
 //===============================db sessions flash=======================================
 const dburl=process.env.MONGO_URL;
-secretkey=process.env.SECRET_Key;
+secretkey=process.env.SECRET_KEY;
 
 const store=MongoStore.create({
     mongoUrl:dburl,
@@ -100,7 +100,7 @@ passport.deserializeUser(async (id, done) => {
  passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: 'https://ridesynk.onrender.com/auth/google/callback',
+    callbackURL: process.env.GOOGLE_CALLBACK_URL,
     scope: [ 'profile' , 'email' ],
     state: true
   },
@@ -198,10 +198,6 @@ app.use("/sos",sosrouter);
 app.use("/",inviterouter);
 
 
-app.get("/ridesynk/saveprofile",isAuthenticated,(req,res)=>{
-    // FIX: added return
-    return res.redirect("listing/home_dashboard.ejs");
-})
 
 
 //==================google login===============================================

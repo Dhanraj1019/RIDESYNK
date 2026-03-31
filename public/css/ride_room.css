@@ -256,6 +256,27 @@
       box-shadow: 0 14px 30px rgba(239, 68, 68, 0.30);
     }
 
+    /* Share button: wider, shorter, and icon/text in one line for better balance */
+    #shareRideBtn {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 0.48rem;
+      min-height: 48px;
+      padding: 0.62rem 0.9rem;
+      font-size: 0.82rem;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    #shareRideBtn svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
     .share-container {
       margin: 0.1rem 0 1.1rem;
       opacity: 0;

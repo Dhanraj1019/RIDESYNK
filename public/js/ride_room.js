@@ -309,7 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
    No HTML changes needed
 ══════════════════════════════════════════════════ */
 
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGhhbnJhajUzNjgiLCJhIjoiY21tajZ6Y2RrMDVsdDJwc2Fnejd3MGlqZSJ9.PSjj-o-pd1Qx0cU47SLqJQ'; // replace with your token
+const MAPBOX_TOKEN = map_token; // replace with your token
 
 /* ── Debounce helper ── */
 function debounce(fn, delay) {

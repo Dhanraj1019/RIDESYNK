@@ -7,17 +7,14 @@ const map_token = process.env.MAP_TOKEN;
 const {validateRideMember}=require("../utils/validateRideMember.js")
 const ExpressError=require("../utils/ExpressError.js");
 
-module.exports.livetracking=async (req,res)=>{
+module.exports.livetracking=async (req,res,next)=>{
     const {id} = req.params;
     const data = await Ride.findOne({_id:id});
+    if(!data){
+        return next(new ExpressError(404,"Ride not found..."));
+    }
     const members=await RideMember.find({rideId:id}).populate("userId");
-    // const userid=(await Fulldetail.findOne({userid:req.user._id}).select("_id"))._id.toString();
     const messages = await Message.find({ rideId:id }).sort({ time: 1 }).populate({path:"senderId",select:"firstname"});
-    // console.log(data)
-    // console.log("members = ",members);
-    // console.log(messages);
-    // console.log(data)
-    // FIX: added return
     return res.render("map/live_tracking.ejs",{data:data.toObject(),map_token,members,messages})
 }
 
@@ -37,7 +34,7 @@ module.exports.ridedetails=async (req,res)=>{
     // console.log("id = ",id)
     // console.log("members = ",members)
     // FIX: added return
-    return res.render("rides/ride_room.ejs",{data,members});
+    return res.render("rides/ride_room.ejs",{data,members,map_token:process.env.MAP_TOKEN});
 }
 
 module.exports.searchmember=async (req, res) => {

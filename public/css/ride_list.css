@@ -312,16 +312,25 @@
     }
  
     /* ── Chevron ───────────────────────────────────── */
-    .card-chevron {
+    .card-arrow {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
       color: var(--text-muted);
-      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       flex-shrink: 0;
-      transition: transform var(--transition), color var(--transition);
+      transition: transform var(--transition), color var(--transition), border-color var(--transition), background var(--transition);
     }
  
-    .ride-card:hover .card-chevron {
+    .ride-card:hover .card-arrow {
       transform: translateX(3px);
       color: var(--primary);
+      border-color: var(--primary-mid);
+      background: var(--primary-soft);
     }
 
     .ride-card.is-canceled {
@@ -336,7 +345,7 @@
       border-color: var(--border);
     }
 
-    .ride-card.is-canceled .card-chevron {
+    .ride-card.is-canceled .card-arrow {
       display: none;
     }
 

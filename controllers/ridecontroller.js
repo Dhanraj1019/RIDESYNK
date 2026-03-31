@@ -128,7 +128,7 @@ module.exports.updatelocation=async (req, res) => {
 
 
 module.exports.createrideform=(req,res)=>{    
-    return res.render("rides/create_ride.ejs");
+    return res.render("rides/create_ride.ejs",{map_token:process.env.MAP_TOKEN});
 }
 
 

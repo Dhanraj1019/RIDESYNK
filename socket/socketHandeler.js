@@ -226,14 +226,50 @@ function registerSocketHandlers(io) {
 		socket.on("sendLocation", handleLocationUpdate);
 
 		socket.on("sendMessage", async (data) => {
-			const { rideId, senderId, message } = data || {};
-			if (!rideId || !senderId || !message) return;
+			const { rideId, message } = data || {};
+			if (!rideId || !message) return;
 
-			const newMsg = new Message({ rideId, senderId, message });
+			const normalizedRideId = String(rideId).trim();
+			const normalizedMessage = String(message).trim();
+			if (!normalizedRideId || !normalizedMessage) return;
+
+			const joinedSession = socketSessionState.get(socket.id);
+			const sessionUserId = joinedSession && joinedSession.userId
+				? String(joinedSession.userId)
+				: "";
+			const passportUserId = socket.request && socket.request.session && socket.request.session.passport
+				? String(socket.request.session.passport.user || "")
+				: "";
+			const senderId = sessionUserId || passportUserId;
+
+			if (!senderId) {
+				socket.emit("sos:error", { message: "Unauthorized listener" });
+				return;
+			}
+
+			if (joinedSession && String(joinedSession.rideId) !== normalizedRideId) {
+				socket.emit("sos:error", { message: "Ride session mismatch" });
+				return;
+			}
+
+			const authorized = await canJoinRideRoom(normalizedRideId, senderId);
+			if (!authorized) {
+				socket.emit("sos:error", { message: "Not allowed in this ride" });
+				return;
+			}
+
+			if (!joinedSession) {
+				socket.join(normalizedRideId);
+				socketSessionState.set(socket.id, { rideId: normalizedRideId, userId: senderId });
+				addActiveSocketToRide(normalizedRideId, senderId, socket.id);
+				emitActiveUsersUpdate(io, normalizedRideId);
+			}
+
+			const newMsg = new Message({ rideId: normalizedRideId, senderId, message: normalizedMessage });
 			await newMsg.save();
 			await newMsg.populate({ path: "senderId", select: "firstname" });
 
-			io.to(String(rideId)).emit("receiveMessage", newMsg);
+			io.to(normalizedRideId).emit("receiveMessage", newMsg);
 		});
 
 		socket.on("disconnect", () => {

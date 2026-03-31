@@ -3,7 +3,7 @@
    No HTML changes needed
 ══════════════════════════════════════════════════ */
 
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGhhbnJhajUzNjgiLCJhIjoiY21tajZ6Y2RrMDVsdDJwc2Fnejd3MGlqZSJ9.PSjj-o-pd1Qx0cU47SLqJQ'; // replace with your token
+const MAPBOX_TOKEN = map_token; // replace with your token
 
 function toDateInputValue(date) {
   const year = date.getFullYear();
@@ -229,7 +229,7 @@ function attachSearch(input, hiddenName = null) {
 ══════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
 
-  const createRideForm = document.querySelector('form[action="/ridesynk/createride"]');
+  const createRideForm = document.querySelector('form[action="/ridesynk/ride/createride"]');
   const dateInput = document.getElementById('ride-date');
   const timeInput = document.getElementById('ride-time');
   const errorNode = document.getElementById('error-msg');
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(createRideForm);
         const body = new URLSearchParams(formData);
 
-        const response = await fetch('/ridesynk/createride', {
+        const response = await fetch('/ridesynk/ride/createride', {
           method: 'POST',
           headers: {
             'X-Requested-With': 'XMLHttpRequest',

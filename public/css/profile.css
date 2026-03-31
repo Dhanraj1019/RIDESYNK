@@ -1,12 +1,13 @@
 :root {
-  --profile-bg: #f5f7fb;
+  --profile-bg: #f4f6fb;
   --profile-card: #ffffff;
-  --profile-text: #222222;
-  --profile-muted: #777777;
-  --profile-border: #e7ebf3;
-  --profile-shadow: 0 12px 34px rgba(17, 24, 39, 0.08);
+  --profile-text: #0f172a;
+  --profile-muted: #64748b;
+  --profile-border: #e2e8f0;
+  --profile-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
   --profile-radius: 16px;
-  --profile-accent: #1f6feb;
+  --profile-accent: #e94560;
+  --profile-accent-soft: rgba(233, 69, 96, 0.14);
 }
 
 *, *::before, *::after {
@@ -15,7 +16,10 @@
 
 .profile-page {
   min-height: calc(100vh - 84px);
-  background: radial-gradient(circle at top right, #ecf2ff 0%, #f5f7fb 50%, #f5f7fb 100%);
+  background:
+    radial-gradient(circle at 88% 12%, rgba(233, 69, 96, 0.12), transparent 34%),
+    radial-gradient(circle at 8% 94%, rgba(148, 163, 184, 0.09), transparent 28%),
+    var(--profile-bg);
   padding: 28px 16px 32px;
 }
 
@@ -47,20 +51,23 @@
   gap: 16px;
   padding: 20px 22px;
   margin-bottom: 16px;
+  background:
+    radial-gradient(circle at 84% 18%, var(--profile-accent-soft), transparent 44%),
+    #ffffff;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .profile-header-card:hover,
 .details-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 36px rgba(17, 24, 39, 0.12);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.11);
 }
 
 .avatar-circle {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #1f6feb, #154a98);
+  background: linear-gradient(145deg, #e94560 0%, #f26980 100%);
   color: #ffffff;
   font-size: 1.7rem;
   font-weight: 800;
@@ -68,6 +75,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 10px 22px rgba(233, 69, 96, 0.32);
 }
 
 .header-meta {
@@ -109,13 +117,13 @@
 }
 
 .role-admin {
-  color: #0b5cab;
-  background: #e7f0ff;
+  color: #9f1239;
+  background: #ffe4ea;
 }
 
 .role-user {
-  color: #245533;
-  background: #e8f7ee;
+  color: #334155;
+  background: #f1f5f9;
 }
 
 .profile-email {
@@ -153,7 +161,7 @@
 .detail-item {
   border: 1px solid var(--profile-border);
   border-radius: 12px;
-  background: #fafcff;
+  background: #ffffff;
   padding: 14px 16px;
   min-height: 84px;
 }
@@ -203,6 +211,12 @@
 .stat-card {
   padding: 14px 12px;
   text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
 }
 
 .stat-value {

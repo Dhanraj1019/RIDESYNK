@@ -42,7 +42,23 @@
       <button class="view-all-btn" onclick="window.location.href='/ridesynk/<%= data._id %>/rides'">View All</button>
     </div>
 
-  <% rides.forEach((ride, i) => { %>
+    <%
+      const sortedRides = (rides || [])
+        .filter((item) => item && item.rideId)
+        .slice()
+        .sort((a, b) => {
+          const aDate = new Date(a.rideId.date || 0).getTime();
+          const bDate = new Date(b.rideId.date || 0).getTime();
+          return bDate - aDate;
+        });
+    %>
+
+  <% sortedRides.forEach((ride, i) => { %>
+    <%
+      const rawStatus = String(ride.rideId.status || '').trim().toLowerCase();
+      const canonicalStatus = rawStatus === 'cancelled' ? 'canceled' : rawStatus;
+      const safeStatus = canonicalStatus || 'upcoming';
+    %>
     
     <button class="ride-card mb-1" onclick="window.location.href='/ridesynk/rideroom/<%= ride.rideId._id %>'">
 
@@ -57,8 +73,9 @@
       <div class="ride-info">
         <p class="ride-name"><%= ride.rideId.ridename %></p>
         <p class="ride-meta">
-          <%= new Date(ride.rideId.date).toDateString() + " . " + ride.rideId.totalMembers %>
+          <%= new Date(ride.rideId.date).toDateString() + " . " + ride.rideId.totalMembers + " riders" %>
         </p>
+        <span class="ride-status-badge ride-status-<%= safeStatus %>"><%= safeStatus %></span>
       </div>
 
       <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
