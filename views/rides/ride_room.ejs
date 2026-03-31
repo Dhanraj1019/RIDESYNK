@@ -120,9 +120,46 @@
       </svg>
       SOS Log
     </button>
+    <button class="action-btn action-default" id="shareRideBtn" data-rideid="<%= data._id %>" <%= isRideAdmin ? '' : 'disabled' %>>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3"/>
+        <circle cx="6" cy="12" r="3"/>
+        <circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+      Share Ride
+    </button>
   </div>
 
-  <div class="ride_link mb-2" style="display: flex; justify-content: space-between;">
+  <div class="share-container" id="shareContainer" aria-hidden="true">
+    <div class="share-card" role="dialog" aria-label="Share this ride">
+      <div class="share-head">
+        <h3>Share this ride</h3>
+        <button type="button" class="share-close" id="shareCloseBtn" aria-label="Close share card">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="share-link-row">
+        <input type="text" id="inviteLinkInput" readonly placeholder="Generate invite link" />
+        <button type="button" class="share-mini-btn" id="copyInviteLinkBtn">
+          <i class="bi bi-clipboard"></i>
+          Copy
+        </button>
+      </div>
+
+      <div class="share-actions">
+        <button type="button" class="share-primary-btn" id="shareCopyPrimaryBtn">Copy Link</button>
+        <button type="button" class="share-secondary-btn" id="nativeShareBtn" style="display:none;">Share</button>
+      </div>
+
+      <p class="share-feedback" id="shareFeedback" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <!-- <div class="ride_link mb-2" style="display: flex; justify-content: space-between;">
     <div class="linkfield">
       <input type="text" id="rideLinkInput" value="http://localhost:8080/ridesync/rideroom/add-member/link/<%=data._id%>" readonly />
       <button class="copy-btn" id="copyRideLinkBtn" onclick="copyRideLink()">
@@ -131,7 +168,7 @@
     <button>
       Join Ride
     </button>
-  </div>
+  </div> -->
   <!-- Members -->
   <div class="section-header">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"

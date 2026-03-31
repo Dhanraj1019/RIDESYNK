@@ -30,6 +30,12 @@ module.exports.login=async (req, res) => {
       req.flash("success", "You logged in successfully");
     }
 
+        if (req.session && req.session.pendingInviteId) {
+            const pendingInviteId = req.session.pendingInviteId;
+            delete req.session.pendingInviteId;
+            return res.redirect(`/invite/${pendingInviteId}`);
+        }
+
     return res.redirect("/ridesync/home");
   };
 

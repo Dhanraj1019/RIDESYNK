@@ -190,6 +190,114 @@ document.addEventListener("DOMContentLoaded", () => {
   destinationInput.addEventListener("input", setSaveButtonState);
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+  const shareRideBtn = document.getElementById("shareRideBtn");
+  const shareContainer = document.getElementById("shareContainer");
+  const shareCloseBtn = document.getElementById("shareCloseBtn");
+  const inviteLinkInput = document.getElementById("inviteLinkInput");
+  const copyInviteLinkBtn = document.getElementById("copyInviteLinkBtn");
+  const shareCopyPrimaryBtn = document.getElementById("shareCopyPrimaryBtn");
+  const nativeShareBtn = document.getElementById("nativeShareBtn");
+  const shareFeedback = document.getElementById("shareFeedback");
+
+  if (!shareRideBtn || !shareContainer || !inviteLinkInput || !copyInviteLinkBtn || !shareCopyPrimaryBtn || !nativeShareBtn || !shareFeedback) {
+    return;
+  }
+
+  if (navigator.share) {
+    nativeShareBtn.style.display = "inline-flex";
+  }
+
+  let cachedInviteLink = "";
+
+  function setShareFeedback(message, isError = false) {
+    shareFeedback.textContent = message || "";
+    shareFeedback.style.color = isError ? "#dc2626" : "#16a34a";
+  }
+
+  async function copyCurrentInviteLink() {
+    if (!inviteLinkInput.value) return;
+    try {
+      await navigator.clipboard.writeText(inviteLinkInput.value);
+      setShareFeedback("Copied!");
+    } catch (error) {
+      inviteLinkInput.select();
+      document.execCommand("copy");
+      setShareFeedback("Copied!");
+    }
+  }
+
+  shareCloseBtn.addEventListener("click", () => {
+    shareContainer.classList.remove("active");
+    shareContainer.setAttribute("aria-hidden", "true");
+  });
+
+  shareRideBtn.addEventListener("click", async () => {
+    const rideId = shareRideBtn.dataset.rideid;
+    if (!rideId) return;
+
+    if (cachedInviteLink) {
+      inviteLinkInput.value = cachedInviteLink;
+      shareContainer.classList.toggle("active");
+      shareContainer.setAttribute("aria-hidden", shareContainer.classList.contains("active") ? "false" : "true");
+      return;
+    }
+
+    const originalLabel = shareRideBtn.innerHTML;
+    shareRideBtn.disabled = true;
+    shareRideBtn.textContent = "Generating...";
+    setShareFeedback("");
+
+    try {
+      const response = await fetch(`/api/invite/create/${rideId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success || !data.inviteLink) {
+        setShareFeedback("Unable to generate invite link", true);
+        shareRideBtn.innerHTML = originalLabel;
+        shareRideBtn.disabled = false;
+        return;
+      }
+
+      cachedInviteLink = data.inviteLink;
+      inviteLinkInput.value = data.inviteLink;
+      shareContainer.classList.add("active");
+      shareContainer.setAttribute("aria-hidden", "false");
+      setShareFeedback("Link ready to share");
+      shareRideBtn.innerHTML = originalLabel;
+      shareRideBtn.disabled = false;
+    } catch (error) {
+      setShareFeedback("Unable to generate invite link", true);
+      shareRideBtn.innerHTML = originalLabel;
+      shareRideBtn.disabled = false;
+    }
+  });
+
+  copyInviteLinkBtn.addEventListener("click", copyCurrentInviteLink);
+  shareCopyPrimaryBtn.addEventListener("click", copyCurrentInviteLink);
+
+  nativeShareBtn.addEventListener("click", async () => {
+    if (!navigator.share || !inviteLinkInput.value) return;
+    try {
+      await navigator.share({
+        title: "Ride Invite",
+        text: "Join my ride using this link",
+        url: inviteLinkInput.value
+      });
+      setShareFeedback("Shared successfully");
+    } catch (error) {
+      if (error && error.name !== "AbortError") {
+        setShareFeedback("Unable to open share dialog", true);
+      }
+    }
+  });
+});
+
 
 
 

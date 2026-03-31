@@ -1,0 +1,63 @@
+<% layout("/layout/boilerplate.ejs") %>
+
+<main class="invite-wrapper">
+  <section class="invite-card" aria-label="Ride invitation">
+    <h2 class="invite-title">Ride Invitation</h2>
+
+    <% if (status === "error") { %>
+      <div class="status-box error" role="alert"><%= statusMessage || "Invite is not available" %></div>
+      <div class="btn-group">
+        <a href="/ridesync/home" class="invite-btn open-btn">Go to Home</a>
+      </div>
+    <% } else if (ride) { %>
+      <div class="info-block">
+        <p class="label"><i class="bi bi-person-circle"></i> Owner</p>
+        <p class="value">
+          <%= invite && invite.createdBy
+            ? ((invite.createdBy.firstname || "") + " " + (invite.createdBy.lastname || "")).trim() || invite.createdBy.username
+            : "Ride Admin" %>
+        </p>
+      </div>
+
+      <div class="info-block route">
+        <p class="label"><i class="bi bi-signpost-2"></i> Route</p>
+        <div class="route-line"><i class="bi bi-geo-alt-fill"></i> <p class="value">From: <%= ride.sorce %></p></div>
+        <div class="route-line"><i class="bi bi-arrow-down"></i> <p class="value">To: <%= ride.destination %></p></div>
+      </div>
+
+      <div class="info-block">
+        <p class="label"><i class="bi bi-clock-history"></i> Schedule</p>
+        <p class="value"><%= new Date(ride.date).toDateString() %> at <%= ride.time %></p>
+      </div>
+
+      <div class="info-block">
+        <p class="label"><i class="bi bi-people-fill"></i> Members</p>
+        <p class="value"><%= ride.totalMembers || 1 %></p>
+      </div>
+
+      <% if (status === "joined") { %>
+        <div class="status-box success" role="status">You already joined this ride.</div>
+        <div class="btn-group">
+          <a href="/ridesync/rideroom/<%= ride._id %>" class="invite-btn open-btn">Open Ride Room</a>
+        </div>
+      <% } else { %>
+        <div class="btn-group">
+          <form action="/api/invite/accept/<%= invite.inviteId %>" method="POST" style="flex:1;">
+            <button class="invite-btn accept-btn" type="submit" style="width:100%;">Accept</button>
+          </form>
+          <form action="/api/invite/decline/<%= invite.inviteId %>" method="POST" style="flex:1;">
+            <button class="invite-btn decline-btn" type="submit" style="width:100%;">Decline</button>
+          </form>
+        </div>
+        <p class="expiry-text">
+          Link expires at <%= invite.expiresAt ? new Date(invite.expiresAt).toLocaleString() : "N/A" %>
+        </p>
+      <% } %>
+    <% } else { %>
+      <div class="status-box warning" role="alert">Invite data is unavailable.</div>
+      <div class="btn-group">
+        <a href="/ridesync/home" class="invite-btn open-btn">Go to Home</a>
+      </div>
+    <% } %>
+  </section>
+</main>

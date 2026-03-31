@@ -23,6 +23,7 @@
             const _isLiveTracking = /^\/ridesync\/rideroom\/[^/]+\/live-tracking$/.test(_u);
             const _isAddMembers = /^\/ridesync\/rideroom\/[^/]+\/add-members$/.test(_u);
             const _isRidesList = /^\/ridesync\/[^/]+\/rides$/.test(_u);
+            const _isInvite = /^\/invite\/[^/]+$/.test(_u);
             const _isProfile = _u.endsWith('/profile');
             const _isSettings = _u.endsWith('/settings');
             const _is404 = _u.includes('/404');
@@ -65,6 +66,9 @@
         <% } %>
         <% if (_isSettings) { %>
             <link href="/css/settings.css" rel="stylesheet">
+        <% } %>
+        <% if (_isInvite) { %>
+            <link href="/css/invite.css" rel="stylesheet">
         <% } %>
     <link href="/css/footer.css" rel="stylesheet">
     <link href="/css/404.css" rel="stylesheet">

@@ -46,6 +46,7 @@ const rideroomrouter=require("./routes/rideroom.js");
 const riderouter=require("./routes/ride.js");
 const uesrrouter=require("./routes/user.js");
 const sosrouter=require("./routes/sos.js");
+const inviterouter=require("./routes/invite.routes.js");
 
 //===============================db sessions flash=======================================
 
@@ -195,6 +196,7 @@ app.use("/ridesync/rideroom",rideroomrouter);
 app.use("/ridesync/ride",riderouter);
 app.use("/ridesync/user",uesrrouter);
 app.use("/sos",sosrouter);
+app.use("/",inviterouter);
 
 
 app.get("/ridesync/saveprofile",isAuthenticated,(req,res)=>{
@@ -211,6 +213,11 @@ app.get("/ridesync/saveprofile",isAuthenticated,(req,res)=>{
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/ridesync/entry/login', failureMessage: true }),
   (req, res) => {
+                if (req.session && req.session.pendingInviteId) {
+                        const pendingInviteId = req.session.pendingInviteId;
+                        delete req.session.pendingInviteId;
+                        return res.redirect(`/invite/${pendingInviteId}`);
+                }
         // FIX: added return
         return res.redirect('/ridesync/home');
   });
