@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const passportLocalMongoose = require("passport-local-mongoose").default;
 const RideMember=require("./ride_member.js");
 const Ride=require("./ride.js");
+const { TravelSchema } = require("./travel.model.js");
 const userSchema = new mongoose.Schema({
   googleId: {
     type: String,
@@ -46,18 +47,8 @@ const userSchema = new mongoose.Schema({
   },
 
   travel: {
-    totalDistance: {
-      type: Number,
-      default: 0
-    },
-    duration: {
-      type: Number,
-      default: 0
-    },
-    updatedAt: {
-      type: Date,
-      default: null
-    }
+    type: TravelSchema,
+    default: () => ({})
   },
   // 🔴 Deletion lifecycle
   status: {

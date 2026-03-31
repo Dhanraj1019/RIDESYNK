@@ -8,6 +8,8 @@ const {ALLOW_MEMBER_CANCELLATION}=require("../utils/extra.js");
 const {haversineMeters}=require("../utils/haversine.js");
 
 const MAX_REASONABLE_SPEED_KMH = 220;
+const MAX_ALLOWED_SPEED_KMH = 150;
+const MAX_DISTANCE_JUMP_KM = 2;
 
 function roundKm(value) {
     return Math.round(value * 100) / 100;
@@ -205,16 +207,16 @@ module.exports.sos=async (req, res, next) => {
     }
 }
 
-module.exports.updateDistance = async (req, res) => {
+module.exports.updateTravelData = async (req, res) => {
     try {
-        const { id } = req.params;
-        const { distance, duration, rideId } = req.body || {};
+        const rideIdFromPath = req.params.rideId || req.params.id;
+        const { distance, duration, rideId, coordinates } = req.body || {};
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
+        if (!mongoose.Types.ObjectId.isValid(rideIdFromPath)) {
             return res.status(400).json({ success: false, message: "Invalid ride id" });
         }
 
-        if (rideId && String(rideId) !== String(id)) {
+        if (rideId && String(rideId) !== String(rideIdFromPath)) {
             return res.status(400).json({ success: false, message: "Ride id mismatch" });
         }
 
@@ -229,6 +231,17 @@ module.exports.updateDistance = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid duration" });
         }
 
+        const safeCoordinates = Array.isArray(coordinates)
+            ? coordinates
+                .filter((point) => Array.isArray(point) && point.length === 2)
+                .map((point) => [Number(point[0]), Number(point[1])])
+                .filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]))
+            : [];
+
+        if (safeCoordinates.length > 3000) {
+            return res.status(400).json({ success: false, message: "Too many coordinates" });
+        }
+
         if (parsedDurationSec > 0 && parsedDistanceKm > 0) {
             const avgSpeedKmh = parsedDistanceKm / (parsedDurationSec / 3600);
             if (avgSpeedKmh > MAX_REASONABLE_SPEED_KMH) {
@@ -236,7 +249,7 @@ module.exports.updateDistance = async (req, res) => {
             }
         }
 
-        const ride = await Ride.findById(id).select("_id adminId sorceLocation destinationLocation");
+        const ride = await Ride.findById(rideIdFromPath).select("_id adminId sorceLocation destinationLocation");
         if (!ride) {
             return res.status(404).json({ success: false, message: "Ride not found" });
         }
@@ -269,15 +282,34 @@ module.exports.updateDistance = async (req, res) => {
 
         // Backward compatibility for older numeric travel field.
         if (!user.travel || typeof user.travel !== "object" || Array.isArray(user.travel)) {
-            user.travel = { totalDistance: 0, duration: 0, updatedAt: null };
+            user.travel = { totalDistance: 0, duration: 0, coordinates: [], updatedAt: null };
         }
 
         const safeDistanceKm = roundKm(parsedDistanceKm);
         const safeDurationSec = Math.max(0, Math.round(parsedDurationSec));
 
+        const previousDistanceKm = Number(user.travel.totalDistance) || 0;
+        const previousDurationSec = Number(user.travel.duration) || 0;
+        const deltaDistanceKm = safeDistanceKm - previousDistanceKm;
+        const deltaDurationSec = safeDurationSec - previousDurationSec;
+
+        if (deltaDistanceKm > MAX_DISTANCE_JUMP_KM && deltaDurationSec > 0 && deltaDurationSec <= 8) {
+            return res.status(400).json({ success: false, message: "Unrealistic distance jump" });
+        }
+
+        if (deltaDistanceKm > 0 && deltaDurationSec > 0) {
+            const deltaSpeedKmh = deltaDistanceKm / (deltaDurationSec / 3600);
+            if (deltaSpeedKmh > MAX_ALLOWED_SPEED_KMH) {
+                return res.status(400).json({ success: false, message: "Unrealistic speed detected" });
+            }
+        }
+
         // Keep monotonic updates in case older payloads arrive out of order.
-        user.travel.totalDistance = Math.max(Number(user.travel.totalDistance) || 0, safeDistanceKm);
-        user.travel.duration = Math.max(Number(user.travel.duration) || 0, safeDurationSec);
+        user.travel.totalDistance = Math.max(previousDistanceKm, safeDistanceKm);
+        user.travel.duration = Math.max(previousDurationSec, safeDurationSec);
+        if (safeCoordinates.length) {
+            user.travel.coordinates = safeCoordinates;
+        }
         user.travel.updatedAt = new Date();
 
         await user.save();
@@ -286,6 +318,7 @@ module.exports.updateDistance = async (req, res) => {
             success: true,
             travel: {
                 totalDistance: user.travel.totalDistance,
+                coordinates: user.travel.coordinates || [],
                 duration: user.travel.duration,
                 updatedAt: user.travel.updatedAt
             }
@@ -293,4 +326,9 @@ module.exports.updateDistance = async (req, res) => {
     } catch (error) {
         return res.status(500).json({ success: false, message: "Failed to update distance" });
     }
+}
+
+module.exports.updateDistance = async (req, res) => {
+    req.params.rideId = req.params.id;
+    return module.exports.updateTravelData(req, res);
 }

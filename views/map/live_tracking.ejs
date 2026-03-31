@@ -240,6 +240,8 @@
     async function bootTracking() {
       await loadScript("/socket.io/socket.io.js");
       await loadScript("/js/map_page.js");
+      await loadScript("/js/distanceUtils.js");
+      await loadScript("/js/tracking.js");
       await loadScript("/js/socket.js");
       await loadScript("/js/sos.js");
     }

@@ -71,8 +71,9 @@ async function startLiveLocation() {
   const allowed = await ensureTrackingPermission();
   if (!allowed) return;
 
-  if (window.RideDistanceTracker && typeof window.RideDistanceTracker.start === 'function') {
-    window.RideDistanceTracker.start();
+  const tracker = window.RideTrackingModule || window.RideDistanceTracker;
+  if (tracker && typeof tracker.start === 'function') {
+    tracker.start();
   }
 
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
@@ -89,8 +90,17 @@ async function startLiveLocation() {
       const payload = { rideId: ride_id, userId: userid, lat, lng, heading, speed };
       socket.emit('location:update', payload);
 
-      if (window.RideDistanceTracker && typeof window.RideDistanceTracker.onPosition === 'function') {
-        window.RideDistanceTracker.onPosition({
+      const tracker = window.RideTrackingModule || window.RideDistanceTracker;
+      if (tracker && typeof tracker.onPositionUpdate === 'function') {
+        tracker.onPositionUpdate({
+          lat,
+          lng,
+          speed,
+          accuracy: pos.coords.accuracy,
+          timestamp: pos.timestamp || Date.now()
+        });
+      } else if (tracker && typeof tracker.onPosition === 'function') {
+        tracker.onPosition({
           lat,
           lng,
           speed,
@@ -142,8 +152,9 @@ socket.on('userLeft', removeRemoteUser);
 window.addEventListener('beforeunload', () => {
   socket.emit('leave:ride', { rideId: ride_id, userId: userid });
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-  if (window.RideDistanceTracker && typeof window.RideDistanceTracker.stop === 'function') {
-    window.RideDistanceTracker.stop({ flush: true });
+  const tracker = window.RideTrackingModule || window.RideDistanceTracker;
+  if (tracker && typeof tracker.stop === 'function') {
+    tracker.stop({ flush: true });
   }
   socket.disconnect();
 });

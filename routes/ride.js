@@ -9,6 +9,12 @@ router.route("/update-location/:rideId")
 router.route("/:id/update-distance")
 .post(isAuthenticated,ridecontroller.updateDistance);
 
+router.route("/:rideId/travel-update")
+.post(isAuthenticated,ridecontroller.updateTravelData);
+
+router.route("/ride/:rideId/travel-update")
+.post(isAuthenticated,ridecontroller.updateTravelData);
+
 router.route("/cancel/:rideId")
 .post(isAuthenticated,ridecontroller.cancelride);
 
