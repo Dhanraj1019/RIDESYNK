@@ -5,8 +5,8 @@ const map_token=process.env.MAP_TOKEN;
 
 //==========================================envirement requirements========================================
 
-require("./cron/deleteUsers");
-require("./cron/ridecompeletion.js");
+// require("./cron/deleteUsers");
+// require("./cron/ridecompeletion.js");
 const express=require("express");
 const app=express();
 const http=require("http");
@@ -181,9 +181,6 @@ main().then((res)=>{
 }).catch((err)=>{
     console.log("error in mongoose connection ", err);
 })
-
-//==================================sos message requirements========================================
-
 
 
 //======================================express routes start here=============================================
