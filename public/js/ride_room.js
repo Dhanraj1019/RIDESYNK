@@ -146,7 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
     routeSaveBtn.disabled = true;
 
     try {
-      const response = await fetch(`/ridesync/ride/update-location/${rideId}`, {
+      const response = await fetch(`/ridesynk/ride/update-location/${rideId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json"
@@ -183,7 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     exitEditMode();
 
-    window.location.href = `/ridesync/rideroom/${rideId}`;
+    window.location.href = `/ridesynk/rideroom/${rideId}`;
   });
 
   sourceInput.addEventListener("input", setSaveButtonState);

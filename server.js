@@ -43,7 +43,7 @@ const ExpressError=require("./utils/ExpressError.js");
 //========================routes requirement==============================
 
 const entryrouter=require("./routes/entry.js");
-const ridesyncrouter=require("./routes/ridesync.js");
+const ridesynkrouter=require("./routes/ridesynk.js");
 const rideroomrouter=require("./routes/rideroom.js");
 const riderouter=require("./routes/ride.js");
 const uesrrouter=require("./routes/user.js");
@@ -100,7 +100,7 @@ passport.deserializeUser(async (id, done) => {
  passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: 'https://ridesynk.onrender.com//auth/google/callback',
+    callbackURL: 'https://ridesynk.onrender.com/auth/google/callback',
     scope: [ 'profile' , 'email' ],
     state: true
   },
@@ -159,7 +159,7 @@ app.use(methodOverride("_method"));
 //============================================server start===============================================
 
 server.listen(8080,()=>{
-    console.log("we are listing on port 8080 !")
+    console.log("we are listing on render !")
 })
 
 //=====================socket start==========================
@@ -186,19 +186,19 @@ main().then((res)=>{
 //======================================express routes start here=============================================
 
 app.get("/",(req,res)=>{
-    return res.redirect("/ridesync/entry/login")
+    return res.redirect("/ridesynk/entry/login")
 })
 
-app.use("/ridesync/entry",entryrouter);
-app.use("/ridesync",ridesyncrouter);
-app.use("/ridesync/rideroom",rideroomrouter);
-app.use("/ridesync/ride",riderouter);
-app.use("/ridesync/user",uesrrouter);
+app.use("/ridesynk/entry",entryrouter);
+app.use("/ridesynk",ridesynkrouter);
+app.use("/ridesynk/rideroom",rideroomrouter);
+app.use("/ridesynk/ride",riderouter);
+app.use("/ridesynk/user",uesrrouter);
 app.use("/sos",sosrouter);
 app.use("/",inviterouter);
 
 
-app.get("/ridesync/saveprofile",isAuthenticated,(req,res)=>{
+app.get("/ridesynk/saveprofile",isAuthenticated,(req,res)=>{
     // FIX: added return
     return res.redirect("listing/home_dashboard.ejs");
 })
@@ -206,11 +206,11 @@ app.get("/ridesync/saveprofile",isAuthenticated,(req,res)=>{
 
 //==================google login===============================================
 
-// app.get("/ridesync/login/google",passport.authenticate('google', { scope: ['profile', 'email'] }));
+// app.get("/ridesynk/login/google",passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 
 app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/ridesync/entry/login', failureMessage: true }),
+  passport.authenticate('google', { failureRedirect: '/ridesynk/entry/login', failureMessage: true }),
   (req, res) => {
                 if (req.session && req.session.pendingInviteId) {
                         const pendingInviteId = req.session.pendingInviteId;
@@ -218,18 +218,18 @@ app.get('/auth/google/callback',
                         return res.redirect(`/invite/${pendingInviteId}`);
                 }
         // FIX: added return
-        return res.redirect('/ridesync/home');
+        return res.redirect('/ridesynk/home');
   });
 
 
 //=================error handling routes=====================================
 
-app.get("/ridesync/test",async (req,res)=>{
-    console.log(req.user);
-})
+// app.get("/ridesynk/test",async (req,res)=>{
+//     console.log(req.user);
+// })
 
 app.use((req,res,next)=>{
-    console.log(req.get("Referrer"))
+    // console.log(req.get("Referrer"))
     next(new ExpressError(404,"page not found..."))
 })
 

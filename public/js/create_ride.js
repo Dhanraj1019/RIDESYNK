@@ -229,7 +229,7 @@ function attachSearch(input, hiddenName = null) {
 ══════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
 
-  const createRideForm = document.querySelector('form[action="/ridesync/createride"]');
+  const createRideForm = document.querySelector('form[action="/ridesynk/createride"]');
   const dateInput = document.getElementById('ride-date');
   const timeInput = document.getElementById('ride-time');
   const errorNode = document.getElementById('error-msg');
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(createRideForm);
         const body = new URLSearchParams(formData);
 
-        const response = await fetch('/ridesync/createride', {
+        const response = await fetch('/ridesynk/createride', {
           method: 'POST',
           headers: {
             'X-Requested-With': 'XMLHttpRequest',

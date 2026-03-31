@@ -21,13 +21,13 @@ module.exports.cancelride=async (req, res, next) => {
 
         if (!mongoose.Types.ObjectId.isValid(rideId)) {
             req.flash("error", "invalid ride id");
-            return res.redirect(req.get("Referrer") || `/ridesync/${req.user._id.toString()}/rides`);
+            return res.redirect(req.get("Referrer") || `/ridesynk/${req.user._id.toString()}/rides`);
         }
 
         const ride = await Ride.findById(rideId);
         if (!ride) {
             req.flash("error", "ride not found");
-            return res.redirect(req.get("Referrer") || `/ridesync/${req.user._id.toString()}/rides`);
+            return res.redirect(req.get("Referrer") || `/ridesynk/${req.user._id.toString()}/rides`);
         }
 
         const normalizedStatus = String(ride.status || "").trim().toLowerCase();
@@ -48,14 +48,14 @@ module.exports.cancelride=async (req, res, next) => {
         const isAuthorized = isCreator || (ALLOW_MEMBER_CANCELLATION && Boolean(isActiveMember));
         if (!isAuthorized) {
             req.flash("error", "you are not authorized to cancel this ride");
-            return res.redirect(req.get("Referrer") || `/ridesync/${req.user._id.toString()}/rides`);
+            return res.redirect(req.get("Referrer") || `/ridesynk/${req.user._id.toString()}/rides`);
         }
 
         ride.status = "canceled";
         await ride.save();
 
         req.flash("success", "ride canceled successfully");
-        return res.redirect(req.get("Referrer") || `/ridesync/${req.user._id.toString()}/rides`);
+        return res.redirect(req.get("Referrer") || `/ridesynk/${req.user._id.toString()}/rides`);
     } catch (err) {
         return next(err);
     }
@@ -66,7 +66,7 @@ module.exports.updatelocation=async (req, res) => {
     try {
         const { rideId } = req.params;
         const { sorce, destination, sorceLocation, destinationLocation } = req.body;
-        console.log(rideId);
+        // console.log(rideId);
         if (!mongoose.Types.ObjectId.isValid(rideId)) {
             return res.status(400).json({ success: false, message: "Invalid ride id" });
         }
@@ -97,7 +97,7 @@ module.exports.updatelocation=async (req, res) => {
         if (!ride) {
             return res.status(404).json({ success: false, message: "Ride not found" });
         }
-        console.log(ride);
+        // console.log(ride);
         const isAdmin = req.user && ride.adminId.toString() === req.user._id.toString();
         if (!isAdmin) {
             return res.status(403).json({ success: false, message: "Only admin can update ride location" });
@@ -172,11 +172,11 @@ module.exports.createride=async (req,res)=>{
               coordinates: destinationlocation.coordinates
             }
         });
-        console.log(newRide);
+        // console.log(newRide);
         const data = await newRide.save();
         await RideMember.insertOne({rideId:data._id,userId:req.user._id,role:"admin"});
         req.flash("success","ride created...!");
-        return res.redirect(`/ridesync/rideroom/${data._id.toString()}`);
+        return res.redirect(`/ridesynk/rideroom/${data._id.toString()}`);
     } catch (error) {
         console.error('Create ride error:', error);
         return res.status(400).json({ error: 'Invalid ride data' });

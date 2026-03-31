@@ -6,7 +6,7 @@ const passport=require("passport");
 
 router.route("/login")
 .get(entrycontroller.loginform)
-.post(passport.authenticate("local", {failureRedirect: "/ridesync/entry/login",failureFlash: true}),entrycontroller.login);
+.post(passport.authenticate("local", {failureRedirect: "/ridesynk/entry/login",failureFlash: true}),entrycontroller.login);
 
 router.route("/login/google")
 .get(passport.authenticate('google', { scope: ['profile', 'email'] }));

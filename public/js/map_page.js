@@ -121,8 +121,8 @@ window.RideDistanceTracker = (() => {
   const MAX_GPS_JUMP_METERS = 450;
   const IDLE_TIMEOUT_MS = 60000;
 
-  const endpoint = `/ridesync/ride/${rideData._id}/update-distance`;
-  const queueKey = `ridesync.distance.queue.${rideData._id}.${userid}`;
+  const endpoint = `/ridesynk/ride/${rideData._id}/update-distance`;
+  const queueKey = `ridesynk.distance.queue.${rideData._id}.${userid}`;
   const initialDistanceMeters = (() => {
     if (currentUserTravel && typeof currentUserTravel === 'object') {
       const km = Number(currentUserTravel.totalDistance);

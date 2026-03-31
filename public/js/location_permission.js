@@ -296,7 +296,7 @@
     });
   }
 
-  window.RideSyncLocationPermission = {
+  window.RideSynkLocationPermission = {
     queryPermission,
     requestCurrentPosition,
     ensurePermissionForLiveTracking,

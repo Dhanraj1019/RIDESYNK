@@ -234,7 +234,7 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
-          <form action="/ridesync/entry/logout" method="get">
+          <form action="/ridesynk/entry/logout" method="get">
             <button class="btn-brand btn" type="submit">Sign Out</button>
           </form>
         </div>
@@ -296,7 +296,7 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
-          <form action="/ridesync/user/<%=data._id%>/delete?_method=DELETE" method="POST">
+          <form action="/ridesynk/user/<%=data._id%>/delete?_method=DELETE" method="POST">
             <button class="btn-danger-soft btn" id="confirmDeleteBtn" disabled onclick="showToast('Account deleted')">Delete Permanently</button>
           </form>
         </div>
@@ -325,7 +325,7 @@
       email: "<%= data.email || '' %>",
       phonenumber: "<%= data.phonenumber || '' %>",
       vehical: "<%= data.vehical || '' %>",
-      updateAction: "/ridesync/user/update?_method=PATCH"
+      updateAction: "/ridesynk/user/update?_method=PATCH"
     };
   </script>
   <script src="/js/settings.js"></script>

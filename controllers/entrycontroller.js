@@ -4,7 +4,7 @@ module.exports.loginform=(req,res)=>{
         return res.render("signup/login_screen.ejs");
     }
     // FIX: added return
-    return res.redirect("/ridesync/home")
+    return res.redirect("/ridesynk/home")
 };
 
 module.exports.login=async (req, res) => {
@@ -12,7 +12,7 @@ module.exports.login=async (req, res) => {
 
     if (!user) {
       req.flash("error", "User not found");
-      return res.redirect("/ridesync/entry/signup");
+      return res.redirect("/ridesynk/entry/signup");
     }
 
     // 🔥 RECOVERY LOGIC
@@ -36,7 +36,7 @@ module.exports.login=async (req, res) => {
             return res.redirect(`/invite/${pendingInviteId}`);
         }
 
-    return res.redirect("/ridesync/home");
+    return res.redirect("/ridesynk/home");
   };
 
   module.exports.logout=(req,res,next)=>{
@@ -45,7 +45,7 @@ module.exports.login=async (req, res) => {
               return next(err);
           }
           req.flash("success","you logout succesfully...")
-          return res.redirect("/ridesync/entry/login")
+          return res.redirect("/ridesynk/entry/login")
       })
   };
 
@@ -60,7 +60,7 @@ module.exports.login=async (req, res) => {
            const testdata=await User.find({$or:[{username:user.username},{email:user.email}]});
            if(testdata.length>0){
                req.flash("error","with this crediencials user alrady exist...");
-               return res.redirect("/ridesync/entry/signup");
+               return res.redirect("/ridesynk/entry/signup");
            } 
            let newuser=new User(user);
            let result = await User.register(newuser,password);
@@ -69,8 +69,8 @@ module.exports.login=async (req, res) => {
                    console.log("error in save user",err);
                }
                else{
-                   req.flash("success","Welcome to ridesync...")
-                   return res.redirect("/ridesync/entry/complete-profile");
+                   req.flash("success","Welcome to ridesynk...")
+                   return res.redirect("/ridesynk/entry/complete-profile");
                }
            })
        }catch(error){
@@ -83,7 +83,7 @@ module.exports.login=async (req, res) => {
       try{
           const id = req.user._id;
           const finddata=await User.findOne({_id:id});
-          console.log(finddata);
+        //   console.log(finddata);
           // FIX: added return
           return res.render("profile/complete_profile.ejs",{user:finddata});
       }catch(err){
@@ -94,7 +94,7 @@ module.exports.login=async (req, res) => {
               }
               req.flash("success","you logout succesfully...")
               // FIX: added return
-              return res.redirect("/ridesync/entry/login")
+              return res.redirect("/ridesynk/entry/login")
           })
           // FIX: prevent multiple response
           return;
@@ -106,10 +106,10 @@ module.exports.login=async (req, res) => {
       const t = await User.findByIdAndUpdate(req.user._id,{...data});
       req.flash("success","your profile save successfully...")
       // FIX: added return
-      return res.redirect("/ridesync/home");
+      return res.redirect("/ridesynk/home");
   }
 
   module.exports.skipprofile=(req,res)=>{
     // FIX: added return
-    return res.redirect("/ridesync/home")
+    return res.redirect("/ridesynk/home")
 }

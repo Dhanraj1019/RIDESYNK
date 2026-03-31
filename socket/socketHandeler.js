@@ -136,7 +136,7 @@ function removeSocketUserLocation(socketId) {
 
 function registerSocketHandlers(io) {
 	io.on("connection", (socket) => {
-		console.log("User connected:", socket.id);
+		console.log("User connected:");
 
 		const handleJoinRide = async (joinPayload) => {
 			const rideId = normalizeRideId(joinPayload);
@@ -163,7 +163,7 @@ function registerSocketHandlers(io) {
 			socket.join(rideId);
 			socketSessionState.set(socket.id, { rideId, userId });
 			addActiveSocketToRide(rideId, userId, socket.id);
-			console.log("Joined ride:", rideId);
+			console.log("Joined ride:");
 
 			const perRide = rideLocationState.get(rideId);
 			if (perRide && perRide.size) {
@@ -237,7 +237,7 @@ function registerSocketHandlers(io) {
 		});
 
 		socket.on("disconnect", () => {
-			console.log("User disconnected:", socket.id);
+			console.log("User disconnected:");
 			const session = socketSessionState.get(socket.id);
 			if (session && session.rideId && session.userId) {
 				removeActiveSocketFromRide(session.rideId, session.userId, socket.id);

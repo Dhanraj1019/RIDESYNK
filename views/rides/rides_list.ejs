@@ -49,7 +49,7 @@
             aria-disabled="<%= isCanceledRide ? 'true' : 'false' %>"
           >
             <a
-              href="<%= isCanceledRide ? '#' : '/ridesync/rideroom/' + rides.rideId._id %>"
+              href="<%= isCanceledRide ? '#' : '/ridesynk/rideroom/' + rides.rideId._id %>"
               class="ride-card-main"
             >
               <div class="card-icon">
@@ -85,7 +85,7 @@
             </a>
 
             <% if (canCancelRide) { %>
-              <form action="/ridesync/ride/cancel/<%= rides.rideId._id %>" method="POST" class="cancel-ride-form">
+              <form action="/ridesynk/ride/cancel/<%= rides.rideId._id %>" method="POST" class="cancel-ride-form">
                 <button type="button" class="cancel-btn" data-rideid="<%= rides.rideId._id %>">Cancel Ride</button>
               </form>
             <% } %>

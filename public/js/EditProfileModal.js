@@ -4,7 +4,7 @@
   if (!window.SettingsModalWrapper || !window.SettingsProfileBus) return;
 
   const profile = window.settingsProfileData || {};
-  const action = profile.updateAction || "/ridesync/user/update?_method=PATCH";
+  const action = profile.updateAction || "/ridesynk/user/update?_method=PATCH";
 
   const modal = new window.SettingsModalWrapper("editProfileModalCustom", {
     title: "Edit Profile",

@@ -574,7 +574,7 @@
     beepAndVibrate();
     fetchState();
 
-    if (!window.ridesyncSocket || !window.ridesyncSocket.connected) {
+    if (!window.ridesynkSocket || !window.ridesynkSocket.connected) {
       showSOSPopup({
         message: SOS_MESSAGE,
         location: {
@@ -629,8 +629,8 @@
     refreshBtn.addEventListener("click", fetchState);
   }
 
-  const socket = window.ridesyncSocket || (typeof window.io === "function" ? window.io() : null);
-  const usingSharedSocket = Boolean(window.ridesyncSocket);
+  const socket = window.ridesynkSocket || (typeof window.io === "function" ? window.io() : null);
+  const usingSharedSocket = Boolean(window.ridesynkSocket);
 
   if (socket) {
 

@@ -3,13 +3,13 @@
   <%
     const _u = (originalUrl || '').toLowerCase();
     const _isHome = _u.endsWith('/home') || _u.endsWith('/saveprofile');
-    const _isRides = /^\/ridesync\/[^/]+\/rides$/.test(_u);
+    const _isRides = /^\/ridesynk\/[^/]+\/rides$/.test(_u);
     const _isProfile = _u.endsWith('/profile');
     const _isSettings = _u.endsWith('/settings');
   %>
   <nav class="footer-nav" role="navigation" aria-label="Main navigation">
 
-    <button class="nav-item <%= _isHome ? 'active' : '' %>" id="nav-home" onclick="window.location.href='/ridesync/home'">
+    <button class="nav-item <%= _isHome ? 'active' : '' %>" id="nav-home" onclick="window.location.href='/ridesynk/home'">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
@@ -20,7 +20,7 @@
     </button>
 
 
-    <button class="nav-item <%= _isRides ? 'active' : '' %>" id="nav-rides" onclick="window.location.href='/ridesync/<%= curruser._id %>/rides'">
+    <button class="nav-item <%= _isRides ? 'active' : '' %>" id="nav-rides" onclick="window.location.href='/ridesynk/<%= curruser._id %>/rides'">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/>
@@ -30,7 +30,7 @@
       <span class="nav-label">Rides</span>
     </button>
 
-    <button class="nav-item <%= _isProfile ? 'active' : '' %>" id="nav-profile" onclick="window.location.href='/ridesync/profile'">
+    <button class="nav-item <%= _isProfile ? 'active' : '' %>" id="nav-profile" onclick="window.location.href='/ridesynk/profile'">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -40,7 +40,7 @@
       <span class="nav-label">Profile</span>
     </button>
 
-    <button class="nav-item <%= _isSettings ? 'active' : '' %>" id="nav-settings" onclick="window.location.href='/ridesync/settings'">
+    <button class="nav-item <%= _isSettings ? 'active' : '' %>" id="nav-settings" onclick="window.location.href='/ridesynk/settings'">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>

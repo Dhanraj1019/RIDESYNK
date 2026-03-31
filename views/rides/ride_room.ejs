@@ -5,7 +5,7 @@
 
   <!-- Header -->
   <div class="header-row">
-      <a href="/ridesync/home">
+      <a href="/ridesynk/home">
         <button class="back-btn" aria-label="Go back">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -97,14 +97,14 @@
 
   <!-- Actions -->
   <div class="actions-grid">
-    <button class="action-btn action-primary js-track-live" data-live-url="/ridesync/rideroom/<%= data._id %>/live-tracking" type="button">
+    <button class="action-btn action-primary js-track-live" data-live-url="/ridesynk/rideroom/<%= data._id %>/live-tracking" type="button">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="5 3 19 12 5 21 5 3"/>
       </svg>
       LIVE TRACKING
     </button>
-    <button class="action-btn action-default" onclick="window.location.href='/ridesync/rideroom/<%= data._id %>/add-members'">
+    <button class="action-btn action-default" onclick="window.location.href='/ridesynk/rideroom/<%= data._id %>/add-members'">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -112,7 +112,7 @@
       </svg>
       Add
     </button>
-    <button class="action-btn action-default" onclick="window.location.href='/ridesync/rideroom/<%= data._id %>/sos'">
+    <button class="action-btn action-default" onclick="window.location.href='/ridesynk/rideroom/<%= data._id %>/sos'">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -161,7 +161,7 @@
 
   <!-- <div class="ride_link mb-2" style="display: flex; justify-content: space-between;">
     <div class="linkfield">
-      <input type="text" id="rideLinkInput" value="http://localhost:8080/ridesync/rideroom/add-member/link/<%=data._id%>" readonly />
+      <input type="text" id="rideLinkInput" value="http://localhost:8080/ridesynk/rideroom/add-member/link/<%=data._id%>" readonly />
       <button class="copy-btn" id="copyRideLinkBtn" onclick="copyRideLink()">
         <i class="bi bi-clipboard"></i>
     </div>

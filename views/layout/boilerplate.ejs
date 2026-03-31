@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RideSync</title>
+    <title>RideSynk</title>
+    <link rel="icon" type="image/png" href="/image/logo2.png" style="border-radius: 10px;">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -18,11 +19,11 @@
             const _iscompleteProfile = _u.endsWith('/complete-profile');
             const _isHome = _u.endsWith('/home') || _u.endsWith('/saveprofile');
             const _isCreateRide = _u.endsWith('/createride');
-            const _isRideRoom = /^\/ridesync\/rideroom\/[^/]+$/.test(_u);
-            const _isSosPage = /^\/ridesync\/rideroom\/[^/]+\/sos$/.test(_u);
-            const _isLiveTracking = /^\/ridesync\/rideroom\/[^/]+\/live-tracking$/.test(_u);
-            const _isAddMembers = /^\/ridesync\/rideroom\/[^/]+\/add-members$/.test(_u);
-            const _isRidesList = /^\/ridesync\/[^/]+\/rides$/.test(_u);
+            const _isRideRoom = /^\/ridesynk\/rideroom\/[^/]+$/.test(_u);
+            const _isSosPage = /^\/ridesynk\/rideroom\/[^/]+\/sos$/.test(_u);
+            const _isLiveTracking = /^\/ridesynk\/rideroom\/[^/]+\/live-tracking$/.test(_u);
+            const _isAddMembers = /^\/ridesynk\/rideroom\/[^/]+\/add-members$/.test(_u);
+            const _isRidesList = /^\/ridesynk\/[^/]+\/rides$/.test(_u);
             const _isInvite = /^\/invite\/[^/]+$/.test(_u);
             const _isProfile = _u.endsWith('/profile');
             const _isSettings = _u.endsWith('/settings');

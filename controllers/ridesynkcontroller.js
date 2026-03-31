@@ -1,13 +1,13 @@
-const User=require("../models/user");
-const Ride=require("../models/ride");
-const RideMember=require("../models/ride_member");
+const User=require("../models/user.js");
+const Ride=require("../models/ride.js");
+const RideMember=require("../models/ride_member.js");
 const {ALLOW_MEMBER_CANCELLATION}=require("../utils/extra.js");
 module.exports.home=async (req,res)=>{
     const data=await User.findOne({_id:req.user._id});
     const rides=await RideMember.find({userId:req.user._id}).populate("rideId");
     // data.rides=rides;
     // console.log(data);
-    console.log("rides = ",rides);
+    // console.log("rides = ",rides);
     let members=0;
     for(let ride of rides){
         members+=ride.rideId.totalMembers;
@@ -26,10 +26,10 @@ module.exports.rides=async (req,res)=>{
     const {id} = req.params;
     if (req.user._id.toString() !== id.toString()) {
         req.flash("error", "you are not authorized to view this ride list");
-        return res.redirect(`/ridesync/${req.user._id.toString()}/rides`);
+        return res.redirect(`/ridesynk/${req.user._id.toString()}/rides`);
     }
     const fulldata=await RideMember.find({userId:id}).select("rideId").populate("rideId");
-    console.log(fulldata);
+    // console.log(fulldata);
     if(fulldata.length){
         return res.render("rides/rides_list.ejs",{data:fulldata,canMembersCancel:ALLOW_MEMBER_CANCELLATION})
     }
@@ -42,7 +42,7 @@ module.exports.profile=async (req,res)=>{
     const id=req.user._id;
     const data=await User.findOne({_id:id});
     const rides=await RideMember.find({userId:req.user._id});
-    console.log(data);
+    // console.log(data);
     // FIX: added return
     return res.render("profile/profile.ejs",{data,rides});
 };

@@ -7,7 +7,7 @@
     <% if (status === "error") { %>
       <div class="status-box error" role="alert"><%= statusMessage || "Invite is not available" %></div>
       <div class="btn-group">
-        <a href="/ridesync/home" class="invite-btn open-btn">Go to Home</a>
+        <a href="/ridesynk/home" class="invite-btn open-btn">Go to Home</a>
       </div>
     <% } else if (ride) { %>
       <div class="info-block">
@@ -38,7 +38,7 @@
       <% if (status === "joined") { %>
         <div class="status-box success" role="status">You already joined this ride.</div>
         <div class="btn-group">
-          <a href="/ridesync/rideroom/<%= ride._id %>" class="invite-btn open-btn">Open Ride Room</a>
+          <a href="/ridesynk/rideroom/<%= ride._id %>" class="invite-btn open-btn">Open Ride Room</a>
         </div>
       <% } else { %>
         <div class="btn-group">
@@ -56,7 +56,7 @@
     <% } else { %>
       <div class="status-box warning" role="alert">Invite data is unavailable.</div>
       <div class="btn-group">
-        <a href="/ridesync/home" class="invite-btn open-btn">Go to Home</a>
+        <a href="/ridesynk/home" class="invite-btn open-btn">Go to Home</a>
       </div>
     <% } %>
   </section>

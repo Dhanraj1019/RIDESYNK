@@ -6,7 +6,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 const socket = io();   // relative URL — no hardcoded localhost
-window.ridesyncSocket = socket;
+window.ridesynkSocket = socket;
 const ride_id = rideData._id;
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ function getSenderInitial(sender) {
 
 // ── Connect: join ride room + start GPS ──────────────────────────────
 socket.on('connect', () => {
-  console.log('Socket connected:', socket.id);
+  console.log('Socket connected:');
   socket.emit('join:ride', { rideId: ride_id, userId: userid });
   startLiveLocation();
 });
@@ -45,19 +45,19 @@ socket.on('ride:activeUsers:update', updateActiveUsersCounter);
 let watchId = null;
 
 function showLocationMessage(message) {
-  if (window.RideSyncLocationPermission && typeof window.RideSyncLocationPermission.showToast === 'function') {
-    window.RideSyncLocationPermission.showToast(message);
+  if (window.RideSynkLocationPermission && typeof window.RideSynkLocationPermission.showToast === 'function') {
+    window.RideSynkLocationPermission.showToast(message);
   } else {
     console.warn(message);
   }
 }
 
 async function ensureTrackingPermission() {
-  if (!window.RideSyncLocationPermission || typeof window.RideSyncLocationPermission.queryPermission !== 'function') {
+  if (!window.RideSynkLocationPermission || typeof window.RideSynkLocationPermission.queryPermission !== 'function') {
     return true;
   }
 
-  const status = await window.RideSyncLocationPermission.queryPermission();
+  const status = await window.RideSynkLocationPermission.queryPermission();
   if (status === 'granted') {
     return true;
   }

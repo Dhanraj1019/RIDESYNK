@@ -3,9 +3,9 @@ const ExpressError=require("../utils/ExpressError.js");
 
 module.exports.update=async (req,res)=>{
     const {update}=req.body;
-    console.log(update);
+    // console.log(update);
     const userdata=await User.findOneAndUpdate({_id:req.user._id},{...update});
-    return res.redirect("/ridesync/settings");
+    return res.redirect("/ridesynk/settings");
 };
 
 module.exports.delete=async (req, res,next) => {
@@ -33,7 +33,7 @@ module.exports.delete=async (req, res,next) => {
     });
 
         // FIX: added return
-        return res.redirect("/ridesync/entry/logout");
+        return res.redirect("/ridesynk/entry/logout");
 
   } catch (err) {
     console.error(err);

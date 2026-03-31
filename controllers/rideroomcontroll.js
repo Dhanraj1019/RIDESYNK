@@ -35,7 +35,7 @@ module.exports.ridedetails=async (req,res)=>{
     const members=await RideMember.find({rideId:id}).populate("userId");
     // console.log("data = ",data)
     // console.log("id = ",id)
-    console.log("members = ",members)
+    // console.log("members = ",members)
     // FIX: added return
     return res.render("rides/ride_room.ejs",{data,members});
 }
@@ -49,7 +49,7 @@ module.exports.searchmember=async (req, res) => {
                 message: 'Please enter a valid phone number'
             });
         }
-        console.log(phone);
+        // console.log(phone);
         const data = await User.findOne({phonenumber:phone}).select('_id firstname lastname phonenumber isDeleted status');
         if (!data) {
             return res.status(404).json({
@@ -64,7 +64,7 @@ module.exports.searchmember=async (req, res) => {
         });
 
     } catch (err) {
-        console.log("hkewjrjf");
+        // console.log("hkewjrjf");
         console.error('SEARCH ERROR:', err.message);
         return res.status(500).json({
             success: false,

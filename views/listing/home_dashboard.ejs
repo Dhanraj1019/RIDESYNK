@@ -39,12 +39,12 @@
 
     <div class="section-header">
       <h2>Your Rides</h2>
-      <button class="view-all-btn" onclick="window.location.href='/ridesync/<%= data._id %>/rides'">View All</button>
+      <button class="view-all-btn" onclick="window.location.href='/ridesynk/<%= data._id %>/rides'">View All</button>
     </div>
 
   <% rides.forEach((ride, i) => { %>
     
-    <button class="ride-card mb-1" onclick="window.location.href='/ridesync/rideroom/<%= ride.rideId._id %>'">
+    <button class="ride-card mb-1" onclick="window.location.href='/ridesynk/rideroom/<%= ride.rideId._id %>'">
 
       <div class="ride-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -76,7 +76,7 @@
   </div>
 
   <!-- FAB -->
-  <button style="border: none;" class=" plusbtn" onclick="window.location.href='/ridesync/ride/createride'" aria-label="Create new ride">
+  <button style="border: none;" class=" plusbtn" onclick="window.location.href='/ridesynk/ride/createride'" aria-label="Create new ride">
     <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
 
@@ -120,7 +120,7 @@
           <%= data.phonenumber || "..." %>
         </p></div>
       </div>
-      <button class="btn-primary-custom" onclick="window.location.href='/ridesync/profile'">View Full Profile</button>
+      <button class="btn-primary-custom" onclick="window.location.href='/ridesynk/profile'">View Full Profile</button>
       <div class="adjstdrawer" style="height: 3rem;width: 100%;"></div>
     </div>
   </div>

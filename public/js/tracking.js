@@ -5,8 +5,8 @@
   const RETRY_MS = 8000;
   const MAX_COORDS = 2000;
 
-  const queueKey = `ridesync.travel.queue.${rideData._id}.${userid}`;
-  const endpoint = `/ridesync/ride/${rideData._id}/travel-update`;
+  const queueKey = `ridesynk.travel.queue.${rideData._id}.${userid}`;
+  const endpoint = `/ridesynk/ride/${rideData._id}/travel-update`;
 
   const rideState = {
     isTracking: false,

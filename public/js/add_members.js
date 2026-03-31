@@ -159,7 +159,7 @@ async function doSearch() {
   setSearchLoading(true);
 
   try {
-    const res  = await fetch(`/ridesync/rideroom/search-member?phone=${encodeURIComponent(digits)}`);
+    const res  = await fetch(`/ridesynk/rideroom/search-member?phone=${encodeURIComponent(digits)}`);
     const text = await res.text();
 
     let data;
@@ -246,8 +246,8 @@ function addMemberToList(user) {
   addedPhones.add(key);
   addedIds.add(String(user._id));
 
-  console.log('Added phone key:', key);
-  console.log('addedPhones Set:', [...addedPhones]);
+  // console.log('Added phone key:', key);
+  // console.log('addedPhones Set:', [...addedPhones]);
 
   const list  = document.getElementById('member-list');
   const color = nextColor();
@@ -305,8 +305,8 @@ function removeMember(phone, userId) {
   const elemId = 'mem-' + phone;
   const item   = document.getElementById(elemId);
 
-  console.log('removeMember called — phone:', phone, 'elemId:', elemId, 'found:', !!item);
-  console.log('addedPhones before delete:', [...addedPhones]);
+  // console.log('removeMember called — phone:', phone, 'elemId:', elemId, 'found:', !!item);
+  // console.log('addedPhones before delete:', [...addedPhones]);
 
   if (!item) {
     console.error('ELEMENT NOT FOUND — id was:', elemId);
@@ -324,7 +324,7 @@ function removeMember(phone, userId) {
     addedPhones.delete(phone);
     addedIds.delete(String(userId));
 
-    console.log('addedPhones after delete:', [...addedPhones]);
+    // console.log('addedPhones after delete:', [...addedPhones]);
 
     updateCount();
   validateMembers();
@@ -332,7 +332,7 @@ function removeMember(phone, userId) {
     // Re-enable Add button if this removed user matches current search result
     if (searchedUser) {
       const searchedKey = normalizePhone(searchedUser.phonenumber);
-      console.log('searchedKey:', searchedKey, 'removed phone:', phone, 'match:', searchedKey === phone);
+      // console.log('searchedKey:', searchedKey, 'removed phone:', phone, 'match:', searchedKey === phone);
 
       if (searchedKey === phone) {
         setAddBtnReady(document.getElementById('add-result-btn'));
@@ -374,7 +374,7 @@ async function handleDone() {
   }
 
   try {
-    const res = await fetch(`/ridesync/rideroom/${RIDE_ID}/add-members`, {
+    const res = await fetch(`/ridesynk/rideroom/${RIDE_ID}/add-members`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ userIds: Array.from(addedIds) })
@@ -390,7 +390,7 @@ async function handleDone() {
 
     setInlineError('');
     showToast('Members saved ✓');
-    setTimeout(() => window.location.href = `/ridesync/rideroom/${RIDE_ID}`, 800);
+    setTimeout(() => window.location.href = `/ridesynk/rideroom/${RIDE_ID}`, 800);
 
   } catch (err) {
     console.error('handleDone error:', err);

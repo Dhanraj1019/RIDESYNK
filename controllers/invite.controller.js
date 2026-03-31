@@ -85,7 +85,7 @@ module.exports.openInvite = async (req, res) => {
 
         if (!req.isAuthenticated || !req.isAuthenticated()) {
             req.session.pendingInviteId = inviteId;
-            return res.redirect("/ridesync/entry/login");
+            return res.redirect("/ridesynk/entry/login");
         }
 
         const invite = await getInviteWithRide(inviteId);
@@ -129,7 +129,7 @@ module.exports.acceptInvite = async (req, res) => {
     try {
         if (!req.isAuthenticated || !req.isAuthenticated()) {
             req.session.pendingInviteId = req.params.inviteId;
-            return res.redirect("/ridesync/entry/login");
+            return res.redirect("/ridesynk/entry/login");
         }
 
         const { inviteId } = req.params;
@@ -179,13 +179,13 @@ module.exports.acceptInvite = async (req, res) => {
         await invite.save();
 
         req.flash("success", "You joined the ride successfully");
-        return res.redirect(`/ridesync/rideroom/${ride._id}`);
+        return res.redirect(`/ridesynk/rideroom/${ride._id}`);
     } catch (error) {
         if (error && error.code === 11000) {
             req.flash("success", "You already joined this ride");
             const invite = await Invite.findOne({ inviteId: req.params.inviteId }).select("rideId");
             if (invite && invite.rideId) {
-                return res.redirect(`/ridesync/rideroom/${invite.rideId}`);
+                return res.redirect(`/ridesynk/rideroom/${invite.rideId}`);
             }
         }
 
@@ -201,7 +201,7 @@ module.exports.acceptInvite = async (req, res) => {
 module.exports.declineInvite = async (req, res) => {
     try {
         if (!req.isAuthenticated || !req.isAuthenticated()) {
-            return res.redirect("/ridesync/entry/login");
+            return res.redirect("/ridesynk/entry/login");
         }
 
         const { inviteId } = req.params;
@@ -212,8 +212,8 @@ module.exports.declineInvite = async (req, res) => {
         }
 
         req.flash("success", "Invite declined");
-        return res.redirect("/ridesync/home");
+        return res.redirect("/ridesynk/home");
     } catch (error) {
-        return res.redirect("/ridesync/home");
+        return res.redirect("/ridesynk/home");
     }
 };

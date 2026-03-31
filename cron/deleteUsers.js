@@ -22,7 +22,7 @@ cron.schedule("0 0 * * *", async () => {
       deleteAfter: { $lte: now }
     });
 
-    console.log(`Found ${usersToDelete.length} users to delete`);
+    // console.log(`Found ${usersToDelete.length} users to delete`);
 
     for (const user of usersToDelete) {
       // const session = await mongoose.startSession();
@@ -95,7 +95,7 @@ cron.schedule("0 0 * * *", async () => {
         // await session.commitTransaction();
         // session.endSession();
 
-        console.log(`✅ Deleted user ${user._id}`);
+        // console.log(`✅ Deleted user ${user._id}`);
 
       } catch (err) {
         // ❌ ROLLBACK
