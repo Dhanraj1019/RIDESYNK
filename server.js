@@ -100,7 +100,7 @@ passport.deserializeUser(async (id, done) => {
  passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: 'https://greetingless-nonextrinsically-rubi.ngrok-free.dev/auth/google/callback',
+    callbackURL: 'https://ridesynk.onrender.com//auth/google/callback',
     scope: [ 'profile' , 'email' ],
     state: true
   },
