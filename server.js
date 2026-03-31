@@ -2,6 +2,7 @@
 // const mapboxToken = process.env.MAP_TOKEN;
 require('dotenv').config();
 const map_token=process.env.MAP_TOKEN;
+
 //==========================================envirement requirements========================================
 
 require("./cron/deleteUsers");
@@ -32,7 +33,8 @@ const geocoder = mbxGeocoding({
   accessToken: map_token
 });
 
-//===========================files export from another folders==========================================
+//===========================files import from another folders==========================================
+
 const User=require("./models/user.js");
 const registerSocketHandlers = require("./socket/socketHandeler.js");
 const {isAuthenticated}=require("./midelwear.js");
@@ -49,14 +51,14 @@ const sosrouter=require("./routes/sos.js");
 const inviterouter=require("./routes/invite.routes.js");
 
 //===============================db sessions flash=======================================
-
-const dburl="mongodb://127.0.0.1/ridesync";
+const dburl=process.env.MONGO_URL;
+secretkey=process.env.SECRET_key;
 
 const store=MongoStore.create({
     mongoUrl:dburl,
     touchAfter: 24 * 3600,
     crypto:{
-        secret:"mysecreatekey"
+        secret:secretkey
     },
 })
 
@@ -66,7 +68,7 @@ store.on("error",function(err){
 
 app.use(session({
     store,
-    secret:"mysecreatekey",
+    secret:secretkey,
     resave:false,
     saveUninitialized:false,
 }))
