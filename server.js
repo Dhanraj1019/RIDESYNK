@@ -52,7 +52,7 @@ const inviterouter=require("./routes/invite.routes.js");
 
 //===============================db sessions flash=======================================
 const dburl=process.env.MONGO_URL;
-secretkey=process.env.SECRET_key;
+secretkey=process.env.SECRET_Key;
 
 const store=MongoStore.create({
     mongoUrl:dburl,
