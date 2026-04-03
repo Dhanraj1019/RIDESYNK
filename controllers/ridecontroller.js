@@ -6,6 +6,7 @@ const ExpressError=require("../utils/ExpressError.js");
 const {validateRideMember}=require("../utils/validateRideMember");
 const {ALLOW_MEMBER_CANCELLATION}=require("../utils/extra.js");
 const {haversineMeters}=require("../utils/haversine.js");
+const {calculateRideDistanceKm}=require("../utils/calculateRideDistanceKm.js");
 
 const MAX_REASONABLE_SPEED_KMH = 220;
 const MAX_ALLOWED_SPEED_KMH = 150;
@@ -149,12 +150,38 @@ module.exports.createride=async (req,res)=>{
         const sorcelocation = JSON.parse(ride.sorcelocation || '{}');
         const destinationlocation = JSON.parse(ride.destinationlocation || '{}');
 
+        const sourceCoordinates = Array.isArray(sorcelocation.coordinates)
+            ? [Number(sorcelocation.coordinates[0]), Number(sorcelocation.coordinates[1])]
+            : null;
+        const destinationCoordinates = Array.isArray(destinationlocation.coordinates)
+            ? [Number(destinationlocation.coordinates[0]), Number(destinationlocation.coordinates[1])]
+            : null;
+
         if (
             !Array.isArray(sorcelocation.coordinates) || sorcelocation.coordinates.length !== 2 ||
             !Array.isArray(destinationlocation.coordinates) || destinationlocation.coordinates.length !== 2
         ) {
             return res.status(400).json({ error: "Invalid location data" });
         }
+
+        if (
+            !sourceCoordinates || !destinationCoordinates ||
+            !Number.isFinite(sourceCoordinates[0]) || !Number.isFinite(sourceCoordinates[1]) ||
+            !Number.isFinite(destinationCoordinates[0]) || !Number.isFinite(destinationCoordinates[1]) ||
+            sourceCoordinates[1] < -90 || sourceCoordinates[1] > 90 ||
+            destinationCoordinates[1] < -90 || destinationCoordinates[1] > 90 ||
+            sourceCoordinates[0] < -180 || sourceCoordinates[0] > 180 ||
+            destinationCoordinates[0] < -180 || destinationCoordinates[0] > 180
+        ) {
+            return res.status(400).json({ error: "Invalid location coordinates" });
+        }
+
+        const distanceKm = await calculateRideDistanceKm({
+            sourceCoords: sourceCoordinates,
+            destinationCoords: destinationCoordinates,
+            sourceAddress: ride.sorce,
+            destinationAddress: ride.destination
+        });
 
         const newRide = new Ride({
             adminId:req.user._id,
@@ -163,13 +190,14 @@ module.exports.createride=async (req,res)=>{
             time,
             sorce:ride.sorce,
             destination:ride.destination,
+            distance: Number.isFinite(distanceKm) && distanceKm >= 0 ? distanceKm : 0,
             sorceLocation: {
               type:'Point',
-              coordinates: sorcelocation.coordinates
+              coordinates: sourceCoordinates
             },
             destinationLocation: {
               type:'Point',
-              coordinates: destinationlocation.coordinates
+              coordinates: destinationCoordinates
             }
         });
         // console.log(newRide);

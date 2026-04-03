@@ -84,7 +84,7 @@ module.exports.openInvite = async (req, res) => {
         }
 
         if (!req.isAuthenticated || !req.isAuthenticated()) {
-            req.session.pendingInviteId = inviteId;
+            req.session.redirectUrl = req.originalUrl;
             return res.redirect("/ridesynk/entry/login");
         }
 
@@ -128,7 +128,7 @@ module.exports.openInvite = async (req, res) => {
 module.exports.acceptInvite = async (req, res) => {
     try {
         if (!req.isAuthenticated || !req.isAuthenticated()) {
-            req.session.pendingInviteId = req.params.inviteId;
+            req.session.redirectUrl = `/invite/${req.params.inviteId}`;
             return res.redirect("/ridesynk/entry/login");
         }
 

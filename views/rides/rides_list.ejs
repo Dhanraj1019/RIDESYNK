@@ -72,7 +72,9 @@
                   <span class="dot"></span>
                   <span><%= rides.rideId.totalMembers %> riders</span>
                   <span class="dot"></span>
-                  <span>5Km</span>
+                  <span>
+                    <%= rides.rideId.distance ? (rides.rideId.distance ) + ' km' : 'Distance N/A' %>
+                  </span>
                 </div>
                 <div class="mt-1">
                   <span class="ride-badge <%= rideStatus === 'completed' ? 'badge-completed' : rideStatus === 'canceled' ? 'badge-canceled' : 'badge-upcoming' %>">

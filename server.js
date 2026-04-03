@@ -206,13 +206,17 @@ app.use("/",inviterouter);
 
 
 app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/ridesynk/entry/login', failureMessage: true }),
+    passport.authenticate('google', {
+        failureRedirect: '/ridesynk/entry/login',
+        failureMessage: true,
+        keepSessionInfo: true
+    }),
   (req, res) => {
-                if (req.session && req.session.pendingInviteId) {
-                        const pendingInviteId = req.session.pendingInviteId;
-                        delete req.session.pendingInviteId;
-                        return res.redirect(`/invite/${pendingInviteId}`);
-                }
+    if (req.session && req.session.redirectUrl) {
+        const redirect = req.session.redirectUrl;
+        delete req.session.redirectUrl;
+        return res.redirect(redirect);
+    }
         // FIX: added return
         return res.redirect('/ridesynk/home');
   });

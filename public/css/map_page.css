@@ -593,6 +593,23 @@ body.live-tracking-page {
   color: #16a34a;
 }
 
+.mbadge-offline {
+  background: rgba(107, 114, 128, 0.14);
+  color: #6b7280;
+}
+
+.member-presence-dot.is-online {
+  background: var(--green, #16a34a);
+}
+
+.member-presence-dot.is-offline {
+  background: #9ca3af;
+}
+
+.member-presence-dot.is-admin {
+  background: var(--primary-700, #5d6bff);
+}
+
 /* Avatar gradient helpers */
 .av-bg-1 { background: linear-gradient(135deg, #5d6bff, #8a57ff); }
 .av-bg-2 { background: linear-gradient(135deg, #ff4f74, #ff7c9d); }

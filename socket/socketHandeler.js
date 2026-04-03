@@ -80,6 +80,12 @@ function getActiveUserCount(rideId) {
 	return perRide.size;
 }
 
+function getActiveUserIds(rideId) {
+	const perRide = rideActiveUsersState.get(rideId);
+	if (!perRide) return [];
+	return Array.from(perRide.keys());
+}
+
 async function getTotalRideMembersCount(rideId) {
 	if (!rideId) return 0;
 	try {
@@ -93,8 +99,9 @@ async function getTotalRideMembersCount(rideId) {
 async function emitActiveUsersUpdate(io, rideId) {
 	if (!rideId) return;
 	const activeCount = getActiveUserCount(rideId);
+	const activeUserIds = getActiveUserIds(rideId);
 	const totalCount = await getTotalRideMembersCount(rideId);
-	io.to(rideId).emit("ride:activeUsers:update", { activeCount, totalCount });
+	io.to(rideId).emit("ride:activeUsers:update", { activeCount, totalCount, activeUserIds });
 }
 
 function upsertRideLocation(rideId, locationPayload) {

@@ -30,11 +30,11 @@ module.exports.login=async (req, res) => {
       req.flash("success", "You logged in successfully");
     }
 
-        if (req.session && req.session.pendingInviteId) {
-            const pendingInviteId = req.session.pendingInviteId;
-            delete req.session.pendingInviteId;
-            return res.redirect(`/invite/${pendingInviteId}`);
-        }
+    if (req.session && req.session.redirectUrl) {
+        const redirect = req.session.redirectUrl;
+        delete req.session.redirectUrl;
+        return res.redirect(redirect);
+    }
 
     return res.redirect("/ridesynk/home");
   };
@@ -70,7 +70,12 @@ module.exports.login=async (req, res) => {
                }
                else{
                    req.flash("success","Welcome to ridesynk...")
-                   return res.redirect("/ridesynk/entry/complete-profile");
+                   if (req.session && req.session.redirectUrl) {
+                       const redirect = req.session.redirectUrl;
+                       delete req.session.redirectUrl;
+                       return res.redirect(redirect);
+                   }
+                   return res.redirect("/ridesynk/home");
                }
            })
        }catch(error){

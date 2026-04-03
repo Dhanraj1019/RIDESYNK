@@ -39,6 +39,12 @@ const rideSchema = new mongoose.Schema({
     trim: true
   },
 
+  distance: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+
   // 📍 Geo Locations  (GeoJSON Point)
   sorceLocation: {
     type: {

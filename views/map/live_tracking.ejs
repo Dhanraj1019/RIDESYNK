@@ -98,6 +98,7 @@
     <div class="peek-chip" onclick="window.snapTo('mid')">
       <i class="bi bi-fuel-pump-fill"></i> <span id="stopsPeekValue"><%= stopsLabel %></span>
     </div>
+    
   </div>
 
   <!-- Tab nav -->
@@ -155,6 +156,9 @@
           </div>
         </div>
       </div>
+      <% if (String(curruser._id) === String(data.adminId)) { %>
+        <button onclick="window.emitStartRide()">Start Ride</button>
+      <% } %>
     </div>
 
     <!-- ── MEMBERS ── -->
@@ -169,17 +173,17 @@
             const ci       = i % 4;
             const initials = ((members[i].userId.firstname||'?')[0] + (members[i].userId.lastname||'?')[0]).toUpperCase();
           %>
-          <div class="member-item">
+          <div class="member-item" data-member-user-id="<%= String(members[i].userId._id) %>">
             <div class="member-avatar <%= colours[ci] %>">
               <%= initials %>
-              <span class="sdot" style="background:var(--green)"></span>
+              <span class="sdot member-presence-dot <%= isAdmin ? 'is-admin' : 'is-offline' %>"></span>
             </div>
             <div class="member-info">
               <div class="member-name"><%= fullName %></div>
               <div class="member-role"><%= isAdmin ? 'Organizer' : 'Rider' %></div>
             </div>
-            <span class="mbadge <%= isAdmin ? 'mbadge-driver' : 'mbadge-online' %>">
-              <%= isAdmin ? 'Admin' : 'Online' %>
+            <span class="mbadge member-presence-badge <%= isAdmin ? 'mbadge-driver is-admin' : 'mbadge-offline is-offline' %>">
+              <%= isAdmin ? 'Admin' : 'Offline' %>
             </span>
           </div>
         <% } %>
