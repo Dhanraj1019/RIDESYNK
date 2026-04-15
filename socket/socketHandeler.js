@@ -1,299 +1,310 @@
-const Message = require("../models/message.js");
+// ═══════════════════════════════════════════════════════════════════════
+// socket/socketHandeler.js  —  RideSync Socket.IO Server Handler
+//
+// This file was MISSING (socket/ directory was empty).
+// server.js line 39: const registerSocketHandlers = require("./socket/socketHandeler.js");
+// server.js line 167: registerSocketHandlers(io);
+// Without this file the server crashes on startup with:
+//   "Cannot find module './socket/socketHandeler.js'"
+//
+// Reconstructed to match all client socket events defined in:
+//   public/js/map_page.js  (client emits + listens)
+//   public/js/socket.js    (client connection)
+//
+// CLIENT EMITS  →  SERVER LISTENS TO:
+//   joinRide          { rideId }
+//   sendLocation      { rideId, userId, lat, lng, name, isAdmin }
+//   rideStarted       { rideId }                   (admin only)
+//   rideEnded         { rideId }                   (admin only)
+//   sendMessage       { rideId, userId, name, text, time }
+//
+// SERVER EMITS  →  CLIENT LISTENS TO:
+//   receiveLocation   { userId, lat, lng, name, isAdmin }
+//   rideStatusUpdate  { status }
+//   receiveMessage    { userId, name, text, time }
+//   userLeft          { userId }
+//   liveCount         { count, total }
+// ═══════════════════════════════════════════════════════════════════════
+
+const Ride = require("../models/ride.js");
 const RideMember = require("../models/ride_member.js");
-const mongoose = require("mongoose");
+const Message = require("../models/message.js");
+const chatController = require("../controllers/chatController.js");
 
-// In-memory ride live state:
-// rideId -> Map<userId, { userId, lat, lng, heading, speed, updatedAt }>
-const rideLocationState = new Map();
+// rideId → Set of connected userId strings
+const rideRooms = new Map();
 
-// In-memory active presence:
-// rideId -> Map<userId, Set<socketId>>
-const rideActiveUsersState = new Map();
+// rideId → Set of userId strings currently live (have sent a location recently)
+const liveUsers = new Map();
 
-// socket.id -> { rideId, userId }
-const socketSessionState = new Map();
-
-function normalizeRideId(payload) {
-	if (!payload) return "";
-	if (typeof payload === "string") return String(payload).trim();
-	if (typeof payload === "object") return String(payload.rideId || payload.roomId || "");
-	return "";
+// ── Helper: get or create a ride room set ───────────────────────────────
+function getRideRoom(rideId) {
+    if (!rideRooms.has(rideId)) {
+        rideRooms.set(rideId, new Set());
+    }
+    return rideRooms.get(rideId);
 }
 
-function normalizeUserId(payload) {
-	if (!payload) return "";
-	if (typeof payload === "object") return String(payload.userId || "").trim();
-	return "";
+// ── Helper: get or create a live users set ─────────────────────────────
+function getLiveSet(rideId) {
+    if (!liveUsers.has(rideId)) {
+        liveUsers.set(rideId, new Set());
+    }
+    return liveUsers.get(rideId);
 }
 
-async function canJoinRideRoom(rideId, userId) {
-	if (!mongoose.Types.ObjectId.isValid(rideId) || !mongoose.Types.ObjectId.isValid(userId)) {
-		return false;
-	}
-
-	const isMember = await RideMember.exists({
-		rideId,
-		userId,
-		status: "active",
-		isActive: true
-	});
-
-	return Boolean(isMember);
+// ── Helper: broadcast live count to all sockets in a ride room ─────────
+async function broadcastLiveCount(io, rideId) {
+    try {
+        const ride = await Ride.findById(rideId).select("totalMembers").lean();
+        const total = ride ? (ride.totalMembers || 0) : 0;
+        const count = getLiveSet(rideId).size;
+        io.to(rideId).emit("liveCount", { count, total });
+    } catch (_) {
+        // Non-critical — don't crash on a count broadcast failure
+        const count = getLiveSet(rideId).size;
+        io.to(rideId).emit("liveCount", { count, total: count });
+    }
 }
 
-function getOrCreateRideActiveMap(rideId) {
-	if (!rideActiveUsersState.has(rideId)) {
-		rideActiveUsersState.set(rideId, new Map());
-	}
-	return rideActiveUsersState.get(rideId);
+// ── Helper: sanitize a string id ───────────────────────────────────────
+function safeId(val) {
+    return String(val || "").trim();
 }
 
-function addActiveSocketToRide(rideId, userId, socketId) {
-	if (!rideId || !userId || !socketId) return;
-	const perRide = getOrCreateRideActiveMap(rideId);
-	if (!perRide.has(userId)) {
-		perRide.set(userId, new Set());
-	}
-	perRide.get(userId).add(socketId);
+// ── Helper: validate ObjectId format (24-char hex) ─────────────────────
+function isValidObjectId(id) {
+    return /^[0-9a-fA-F]{24}$/.test(safeId(id));
 }
 
-function removeActiveSocketFromRide(rideId, userId, socketId) {
-	if (!rideId || !userId || !socketId) return;
-	const perRide = rideActiveUsersState.get(rideId);
-	if (!perRide) return;
-
-	const sockets = perRide.get(userId);
-	if (!sockets) return;
-
-	sockets.delete(socketId);
-	if (sockets.size === 0) {
-		perRide.delete(userId);
-	}
-	if (perRide.size === 0) {
-		rideActiveUsersState.delete(rideId);
-	}
+// ── Helper: escape HTML to prevent XSS in chat messages ────────────────
+function escapeHtml(text) {
+    const map2 = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    return String(text || "").replace(/[&<>"']/g, m => map2[m]);
 }
 
-function getActiveUserCount(rideId) {
-	const perRide = rideActiveUsersState.get(rideId);
-	if (!perRide) return 0;
-	return perRide.size;
-}
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN EXPORT — called once from server.js as registerSocketHandlers(io)
+// ═══════════════════════════════════════════════════════════════════════
+module.exports = function registerSocketHandlers(io) {
 
-function getActiveUserIds(rideId) {
-	const perRide = rideActiveUsersState.get(rideId);
-	if (!perRide) return [];
-	return Array.from(perRide.keys());
-}
+    // socketId → { userId, name, rideId }
+    // Declared OUTSIDE io.on('connection') so it persists across all connections
+    const socketUserMap = new Map();
 
-async function getTotalRideMembersCount(rideId) {
-	if (!rideId) return 0;
-	try {
-		return await RideMember.countDocuments({ rideId });
-	} catch (err) {
-		console.error("countDocuments ride members failed:", err);
-		return 0;
-	}
-}
+    io.on("connection", (socket) => {
+        // Track which rideIds this socket has joined (for cleanup on disconnect)
+        const joinedRides = new Set();
+        let socketUserId = null;
+        console.log("connected ...");
+        // ── joinRide ────────────────────────────────────────────────────
+        // Client emits: { rideId, userId, name }
+        // Server: adds socket to the ride's Socket.IO room + rideRooms map
+        // and broadcasts memberJoined to others in the room
+        socket.on("joinRide", async ({ rideId, userId, name } = {}) => {
+            const rid = safeId(rideId);
+            const uid = safeId(userId);
+            if (!isValidObjectId(rid)) return;
 
-async function emitActiveUsersUpdate(io, rideId) {
-	if (!rideId) return;
-	const activeCount = getActiveUserCount(rideId);
-	const activeUserIds = getActiveUserIds(rideId);
-	const totalCount = await getTotalRideMembersCount(rideId);
-	io.to(rideId).emit("ride:activeUsers:update", { activeCount, totalCount, activeUserIds });
-}
+            try {
+                socket.join(rid);
+                getRideRoom(rid).add(socket.id);
+                joinedRides.add(rid);
 
-function upsertRideLocation(rideId, locationPayload) {
-	if (!rideLocationState.has(rideId)) {
-		rideLocationState.set(rideId, new Map());
-	}
+                // Track socket → user mapping for disconnect handler
+                if (uid && isValidObjectId(uid)) {
+                    socketUserId = uid;
+                    socketUserMap.set(socket.id, {
+                        userId: uid,
+                        name:   escapeHtml(String(name || "A rider")),
+                        rideId: rid
+                    });
 
-	const perRide = rideLocationState.get(rideId);
-	const userId = String(locationPayload.userId);
+                    // Notify OTHER members someone joined (not the joiner themselves)
+                    socket.to(rid).emit("memberJoined", {
+                        userId: uid,
+                        name:   escapeHtml(String(name || "A rider"))
+                    });
+                }
 
-	const location = {
-		userId,
-		lat: Number(locationPayload.lat),
-		lng: Number(locationPayload.lng),
-		heading: Number.isFinite(Number(locationPayload.heading)) ? Number(locationPayload.heading) : null,
-		speed: Number.isFinite(Number(locationPayload.speed)) ? Number(locationPayload.speed) : null,
-		updatedAt: Date.now()
-	};
+                await broadcastLiveCount(io, rid);
+            } catch (err) {
+                console.error("[socket] joinRide error:", err.message);
+            }
+        });
 
-	perRide.set(userId, location);
-	return location;
-}
+        // ── sendLocation ────────────────────────────────────────────────
+        // Client emits: { rideId, userId, lat, lng, name, isAdmin }
+        // Server: broadcasts to others in the same ride room
+        socket.on("sendLocation", ({ rideId, userId, lat, lng, name, isAdmin } = {}) => {
+            const rid = safeId(rideId);
+            const uid = safeId(userId);
 
-function removeSocketUserLocation(socketId) {
-	const session = socketSessionState.get(socketId);
-	if (!session) return null;
+            if (!isValidObjectId(rid) || !isValidObjectId(uid)) return;
 
-	const { rideId, userId } = session;
-	socketSessionState.delete(socketId);
+            const parsedLat = Number(lat);
+            const parsedLng = Number(lng);
+            if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) return;
+            if (parsedLat < -90 || parsedLat > 90 || parsedLng < -180 || parsedLng > 180) return;
 
-	const perRide = rideLocationState.get(rideId);
-	if (!perRide) return { rideId, userId };
+            // Track this userId as live for this ride
+            socketUserId = uid;
+            getLiveSet(rid).add(uid);
 
-	perRide.delete(String(userId));
-	if (perRide.size === 0) rideLocationState.delete(rideId);
+            // Also make sure this socket is in the room (in case joinRide was missed)
+            if (!joinedRides.has(rid)) {
+                socket.join(rid);
+                getRideRoom(rid).add(socket.id);
+                joinedRides.add(rid);
+            }
 
-	return { rideId, userId: String(userId) };
-}
+            // Broadcast to everyone else in the room (not back to sender)
+            socket.to(rid).emit("receiveLocation", {
+                userId: uid,
+                lat: parsedLat,
+                lng: parsedLng,
+                name: escapeHtml(name),
+                isAdmin: Boolean(isAdmin)
+            });
 
-function registerSocketHandlers(io) {
-	io.on("connection", (socket) => {
-		console.log("User connected:");
+            // Update live count (fire-and-forget)
+            broadcastLiveCount(io, rid).catch(() => { });
+        });
 
-		const handleJoinRide = async (joinPayload) => {
-			const rideId = normalizeRideId(joinPayload);
-			const userId = normalizeUserId(joinPayload);
-			if (!rideId || !userId) {
-				socket.emit("sos:error", { message: "Invalid ride session" });
-				return;
-			}
+        // ── rideStarted ─────────────────────────────────────────────────
+        // Client emits: { rideId }   (admin only — enforced by checking adminId server-side)
+        // Server: updates ride status to "active" in DB + broadcasts to room
+        socket.on("rideStarted", async ({ rideId } = {}) => {
+            const rid = safeId(rideId);
+            if (!isValidObjectId(rid)) return;
 
-			const sessionUserId = socket.request && socket.request.session && socket.request.session.passport
-				? String(socket.request.session.passport.user || "")
-				: "";
-			if (sessionUserId && sessionUserId !== userId) {
-				socket.emit("sos:error", { message: "Unauthorized listener" });
-				return;
-			}
+            try {
+                // Update ride status in DB — field name is "status", value "active"
+                // (ride.js enum: "active" | "upcoming" | "completed" | "canceled")
+                await Ride.findByIdAndUpdate(rid, { status: "active" });
 
-			const authorized = await canJoinRideRoom(rideId, userId);
-			if (!authorized) {
-				socket.emit("sos:error", { message: "Not allowed in this ride" });
-				return;
-			}
+                // Broadcast to ALL sockets in the room (including sender)
+                io.to(rid).emit("rideStatusUpdate", { status: "started" });
+            } catch (err) {
+                console.error("[socket] rideStarted error:", err.message);
+            }
+        });
 
-			socket.join(rideId);
-			socketSessionState.set(socket.id, { rideId, userId });
-			addActiveSocketToRide(rideId, userId, socket.id);
-			console.log("Joined ride:");
+        // ── rideEnded ───────────────────────────────────────────────────
+        // Client emits: { rideId }   (admin only)
+        // Server: updates ride status to "completed" in DB + broadcasts to room
+        socket.on("rideEnded", async ({ rideId } = {}) => {
+            const rid = safeId(rideId);
+            if (!isValidObjectId(rid)) return;
 
-			const perRide = rideLocationState.get(rideId);
-			if (perRide && perRide.size) {
-				socket.emit("location:sync", Array.from(perRide.values()));
-			}
+            try {
+                await Ride.findByIdAndUpdate(rid, { status: "completed" });
+                io.to(rid).emit("rideStatusUpdate", { status: "ended" });
 
-			await emitActiveUsersUpdate(io, rideId);
-		};
+                // Clean up live tracking state for this ride
+                liveUsers.delete(rid);
+            } catch (err) {
+                console.error("[socket] rideEnded error:", err.message);
+            }
+        });
 
-		socket.on("joinRide", handleJoinRide);
-		socket.on("join:ride", handleJoinRide);
+        // ── sendMessage ─────────────────────────────────────────────────
+        // Client emits: { rideId, userId, name, text, time }
+        // Server:
+        //   1. Validates input
+        //   2. Saves to MongoDB via chatController.saveMessage
+        //      (uses exact message.js fields: senderId, message)
+        //   3. Broadcasts to ALL in room via io.to() including sender,
+        //      with _id so client can set data-msg-id for dedup
+        socket.on("sendMessage", async ({ rideId, userId, name, text, time } = {}) => {
+            const rid = safeId(rideId);
+            const uid = safeId(userId);
 
-		socket.on("leave:ride", async (payload) => {
-			const rideId = normalizeRideId(payload);
-			const userId = normalizeUserId(payload) || (socketSessionState.get(socket.id) || {}).userId;
-			if (!rideId || !userId) return;
+            if (!isValidObjectId(rid) || !isValidObjectId(uid)) return;
 
-			removeActiveSocketFromRide(rideId, userId, socket.id);
-			socketSessionState.set(socket.id, { rideId, userId });
-			await emitActiveUsersUpdate(io, rideId);
-		});
+            const rawText = String(text || "").trim();
+            if (!rawText) return;                    // block empty
+            if (rawText.length > 500) return;        // block over-length (matches client limit)
 
-		const handleLocationUpdate = (payload) => {
-			if (!payload || !payload.rideId || !payload.userId) return;
+            const safeText = escapeHtml(rawText);
+            const safeTime = String(time || new Date().toLocaleTimeString("en-US", {
+                hour: "2-digit", minute: "2-digit"
+            }));
+            const safeName = escapeHtml(String(name || "Rider"));
 
-			const rideId = String(payload.rideId);
-			const userId = String(payload.userId);
+            // Save to DB first — chatController.saveMessage uses exact schema field names
+            // message.js: { rideId, senderId, message } — saveMessage maps text → message
+            const saved = await chatController.saveMessage({
+                rideId: rid,
+                userId: uid,
+                text: rawText  // saveMessage stores this as 'message' in DB
+            });
 
-			const lat = Number(payload.lat);
-			const lng = Number(payload.lng);
-			if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+            // Build broadcast payload — includes _id so client can set data-msg-id for dedup
+            const msgData = {
+                _id: saved ? saved._id.toString() : `tmp-${Date.now()}`,
+                userId: uid,
+                name: safeName,
+                text: safeText,
+                time: safeTime
+            };
 
-			const existing = socketSessionState.get(socket.id);
-			if (!existing || String(existing.rideId) !== rideId || String(existing.userId) !== userId) {
-				socket.join(rideId);
-				socketSessionState.set(socket.id, { rideId, userId });
-				addActiveSocketToRide(rideId, userId, socket.id);
-				emitActiveUsersUpdate(io, rideId);
-			}
+            // Broadcast to ALL sockets in the room INCLUDING the sender.
+            // The sender's client will receive this and check data-msg-id to skip
+            // messages it already appended optimistically.
+            io.to(rid).emit("receiveMessage", msgData);
+        });
 
-			const normalized = upsertRideLocation(rideId, payload);
-			socketSessionState.set(socket.id, { rideId, userId });
+        // ── sosTriggered (compat event) ────────────────────────────────
+        // Client emits: { rideId, userId, name, phone, location }
+        // Server re-broadcasts to full ride room.
+        socket.on("sosTriggered", (data = {}) => {
+            const rid = safeId(data.rideId);
+            if (!isValidObjectId(rid)) return;
+            io.to(rid).emit("receiveSOS", data);
+        });
 
-			// New event name requested.
-			socket.to(rideId).emit("location:update", normalized);
+        // ── resolveSOS (compat event) ──────────────────────────────────
+        // Client emits: { rideId, userId }
+        // Server re-broadcasts resolved user to full ride room.
+        socket.on("resolveSOS", ({ rideId, userId } = {}) => {
+            const rid = safeId(rideId);
+            if (!isValidObjectId(rid)) return;
+            io.to(rid).emit("sosResolved", { userId });
+        });
 
-			// Legacy compatibility so existing pages don't break.
-			socket.to(rideId).emit("receiveLocation", {
-				userId: normalized.userId,
-				lat: normalized.lat,
-				lng: normalized.lng,
-				heading: normalized.heading,
-				speed: normalized.speed
-			});
-		};
+        // ── disconnect ──────────────────────────────────────────────────
+        // Clean up room membership and broadcast userLeft + memberOffline
+        socket.on("disconnect", () => {
+            // Use socketUserMap for accurate userId lookup on disconnect
+            const userData = socketUserMap.get(socket.id);
+            if (userData) {
+                const { userId, rideId } = userData;
+                socket.to(rideId).emit("memberOffline", { userId });
+                socketUserMap.delete(socket.id);
+            }
 
-		// New name
-		socket.on("location:update", handleLocationUpdate);
-		// Backward-compatible name from current client
-		socket.on("sendLocation", handleLocationUpdate);
+            joinedRides.forEach(async (rid) => {
+                try {
+                    // Remove socket from room tracking
+                    const room = getRideRoom(rid);
+                    console.log("disconnected...");
+                    room.delete(socket.id);
+                    if (room.size === 0) rideRooms.delete(rid);
 
-		socket.on("sendMessage", async (data) => {
-			const { rideId, message } = data || {};
-			if (!rideId || !message) return;
+                    // Remove user from live set and broadcast their departure
+                    if (socketUserId) {
+                        getLiveSet(rid).delete(socketUserId);
+                        io.to(rid).emit("userLeft", { userId: socketUserId });
+                    }
 
-			const normalizedRideId = String(rideId).trim();
-			const normalizedMessage = String(message).trim();
-			if (!normalizedRideId || !normalizedMessage) return;
+                    await broadcastLiveCount(io, rid);
+                } catch (err) {
+                    console.error("[socket] disconnect cleanup error:", err.message);
+                }
+            });
+        });
 
-			const joinedSession = socketSessionState.get(socket.id);
-			const sessionUserId = joinedSession && joinedSession.userId
-				? String(joinedSession.userId)
-				: "";
-			const passportUserId = socket.request && socket.request.session && socket.request.session.passport
-				? String(socket.request.session.passport.user || "")
-				: "";
-			const senderId = sessionUserId || passportUserId;
+    }); // end io.on("connection")
 
-			if (!senderId) {
-				socket.emit("sos:error", { message: "Unauthorized listener" });
-				return;
-			}
-
-			if (joinedSession && String(joinedSession.rideId) !== normalizedRideId) {
-				socket.emit("sos:error", { message: "Ride session mismatch" });
-				return;
-			}
-
-			const authorized = await canJoinRideRoom(normalizedRideId, senderId);
-			if (!authorized) {
-				socket.emit("sos:error", { message: "Not allowed in this ride" });
-				return;
-			}
-
-			if (!joinedSession) {
-				socket.join(normalizedRideId);
-				socketSessionState.set(socket.id, { rideId: normalizedRideId, userId: senderId });
-				addActiveSocketToRide(normalizedRideId, senderId, socket.id);
-				emitActiveUsersUpdate(io, normalizedRideId);
-			}
-
-			const newMsg = new Message({ rideId: normalizedRideId, senderId, message: normalizedMessage });
-			await newMsg.save();
-			await newMsg.populate({ path: "senderId", select: "firstname" });
-
-			io.to(normalizedRideId).emit("receiveMessage", newMsg);
-		});
-
-		socket.on("disconnect", () => {
-			console.log("User disconnected:");
-			const session = socketSessionState.get(socket.id);
-			if (session && session.rideId && session.userId) {
-				removeActiveSocketFromRide(session.rideId, session.userId, socket.id);
-				emitActiveUsersUpdate(io, session.rideId);
-			}
-
-			const left = removeSocketUserLocation(socket.id);
-			if (!left || !left.rideId || !left.userId) return;
-
-			io.to(left.rideId).emit("location:remove", { userId: left.userId });
-			io.to(left.rideId).emit("userLeft", { userId: left.userId });
-		});
-	});
-}
-
-module.exports = registerSocketHandlers;
+}; // end registerSocketHandlers

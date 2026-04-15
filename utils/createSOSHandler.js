@@ -7,7 +7,7 @@ const Sos=require("../models/sos.js");
 const {validateRideMember}=require("../utils/validateRideMember.js");
 const {toSosPayload}=require("./getsospaylod.js");
 
-const SOS_COOLDOWN_MS = 15000;
+const SOS_COOLDOWN_MS = 60000;
 const SOS_NOTIFICATION_MESSAGE = "SOS Alert: A rider needs help. Please contact them immediately.";
 
 
@@ -44,6 +44,11 @@ module.exports.createSOSHandler = async (req, res) => {
 
         if (activeSOS) {
             return res.status(409).json({ success: false, message: "SOS already active" });
+        }
+
+        const sosCount = await Sos.countDocuments({ rideId: ride._id });
+        if (sosCount >= 3) {
+            return res.status(403).json({ success: false, message: "Limit reached: Maximum 3 SOS per ride allowed." });
         }
 
         const recentSOS = await Sos.findOne({

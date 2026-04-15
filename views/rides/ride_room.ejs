@@ -22,7 +22,18 @@
         <%= data.ridename %>
       </p>
       <p class="header-sub">
-        <%= "Today, " + data.time + " . " + members.length + " riders " %>
+        <%
+          const headerRideDate = new Date(data.date);
+          const nowDate = new Date();
+          const isTodayRide =
+            headerRideDate.getFullYear() === nowDate.getFullYear() &&
+            headerRideDate.getMonth() === nowDate.getMonth() &&
+            headerRideDate.getDate() === nowDate.getDate();
+          const headerDateLabel = isTodayRide
+            ? "Today"
+            : headerRideDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        %>
+        <%= headerDateLabel + ", " + data.time + " . " + members.length + " riders " %>
       </p>
     </div>
   </div>
@@ -31,7 +42,7 @@
   <% const isRideAdmin = curruser && data && data.adminId && data.adminId.toString() === curruser._id.toString(); %>
   <div class="route-card" id="routeCard" data-rideid="<%= data._id %>" data-currentuserid="<%= curruser ? curruser._id : '' %>">
     <% if (isRideAdmin) { %>
-      <button class="route-edit-btn" id="routeEditBtn" type="button" aria-label="Edit source and destination">
+      <button class="route-edit-btn" id="routeEditBtn" type="button" aria-label="Edit ride details">
         <i class="bi bi-pencil-square"></i>
       </button>
     <% } %>
@@ -45,12 +56,23 @@
         <span id="sourceText"><%= data.sorce %></span>
       </div>
 
-      <div class="route-pin" style="margin-top:0.75rem">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+        <div class="route-pin" style="margin-top:0.75rem">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
         </svg>
         <span id="destinationText"><%= data.destination %></span>
+      </div>
+
+      <div class="route-meta-row">
+        <div class="route-meta-chip">
+          <span class="route-meta-label">Date</span>
+          <span class="route-meta-value" id="rideDateText"><%= new Date(data.date).toLocaleDateString('en-CA') %></span>
+        </div>
+        <div class="route-meta-chip">
+          <span class="route-meta-label">Time</span>
+          <span class="route-meta-value" id="rideTimeText"><%= data.time %></span>
+        </div>
       </div>
     </div>
 
@@ -85,6 +107,30 @@
           />
         </div>
 
+        <div class="route-edit-grid">
+          <div class="route-input-wrap">
+            <label for="rideDateInput" class="route-input-label">Date</label>
+            <input
+              id="rideDateInput"
+              class="route-input"
+              type="date"
+              value="<%= new Date(data.date).toLocaleDateString('en-CA') %>"
+            />
+          </div>
+
+          <div class="route-input-wrap">
+            <label for="rideTimeInput" class="route-input-label">Time</label>
+            <input
+              id="rideTimeInput"
+              class="route-input"
+              type="time"
+              value="<%= data.time %>"
+            />
+          </div>
+        </div>
+
+        <p class="route-edit-error d-none" id="routeEditError" aria-live="polite"></p>
+
         <div class="route-edit-actions">
           <button class="route-btn route-btn-cancel" id="routeCancelBtn" type="button">
             <i class="bi bi-x-circle"></i>
@@ -101,7 +147,7 @@
 
   <!-- Actions -->
   <div class="actions-grid">
-    <button class="action-btn action-primary js-track-live" data-live-url="/ridesynk/rideroom/<%= data._id %>/live-tracking" type="button">
+    <button class="action-btn action-primary js-track-live" onclick="window.location.href='/ridesynk/rideroom/<%= data._id %>/live-tracking'" type="button">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="5 3 19 12 5 21 5 3"/>
@@ -116,13 +162,19 @@
       </svg>
       Add
     </button>
-    <button class="action-btn action-default" onclick="window.location.href='/ridesynk/rideroom/<%= data._id %>/sos'">
+    <button
+      class="action-btn action-default"
+      id="rideRoomSosBtn"
+      type="button"
+      data-rideid="<%= data._id %>"
+      data-soslogurl="/ridesynk/rideroom/<%= data._id %>/sos"
+    >
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>
-      SOS Log
+      SOS
     </button>
     <button class="action-btn action-default" id="shareRideBtn" data-rideid="<%= data._id %>" <%= isRideAdmin ? '' : 'disabled' %>>
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"

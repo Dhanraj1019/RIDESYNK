@@ -49,8 +49,10 @@ const riderouter=require("./routes/ride.js");
 const uesrrouter=require("./routes/user.js");
 const sosrouter=require("./routes/sos.js");
 const inviterouter=require("./routes/invite.routes.js");
+const chatrouter=require("./routes/chatRoutes.js");
 
 //===============================db sessions flash=======================================
+
 const dburl=process.env.MONGO_URL;
 secretkey=process.env.SECRET_KEY;
 
@@ -196,6 +198,7 @@ app.use("/ridesynk/ride",riderouter);
 app.use("/ridesynk/user",uesrrouter);
 app.use("/sos",sosrouter);
 app.use("/",inviterouter);
+app.use("/api/chat",chatrouter);
 
 
 

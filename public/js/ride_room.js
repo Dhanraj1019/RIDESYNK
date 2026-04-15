@@ -49,10 +49,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const routeEditMode = document.getElementById("routeEditMode");
   const sourceText = document.getElementById("sourceText");
   const destinationText = document.getElementById("destinationText");
+  const rideDateText = document.getElementById("rideDateText");
+  const rideTimeText = document.getElementById("rideTimeText");
   const sourceInput = document.getElementById("sourceInput");
   const destinationInput = document.getElementById("destinationInput");
+  const rideDateInput = document.getElementById("rideDateInput");
+  const rideTimeInput = document.getElementById("rideTimeInput");
   const routeSaveBtn = document.getElementById("routeSaveBtn");
   const routeCancelBtn = document.getElementById("routeCancelBtn");
+  const routeEditError = document.getElementById("routeEditError");
 
   if (
     !routeCard ||
@@ -61,16 +66,23 @@ document.addEventListener("DOMContentLoaded", () => {
     !routeEditMode ||
     !sourceText ||
     !destinationText ||
+    !rideDateText ||
+    !rideTimeText ||
     !sourceInput ||
     !destinationInput ||
+    !rideDateInput ||
+    !rideTimeInput ||
     !routeSaveBtn ||
-    !routeCancelBtn
+    !routeCancelBtn ||
+    !routeEditError
   ) {
     return;
   }
 
   let originalSource = sourceText.textContent.trim();
   let originalDestination = destinationText.textContent.trim();
+  let originalRideDate = rideDateText.textContent.trim();
+  let originalRideTime = rideTimeText.textContent.trim();
   let originalSourceLocation = {
     lat: sourceInput.dataset.lat,
     lng: sourceInput.dataset.lng
@@ -79,6 +91,25 @@ document.addEventListener("DOMContentLoaded", () => {
     lat: destinationInput.dataset.lat,
     lng: destinationInput.dataset.lng
   };
+
+  function showRouteError(message) {
+    routeEditError.textContent = message || "";
+    routeEditError.classList.toggle("d-none", !message);
+  }
+
+  function getMinRideDateValue() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function isFutureRideDateTime(dateValue, timeValue) {
+    if (!dateValue || !timeValue) return false;
+    const rideDateTime = new Date(`${dateValue}T${timeValue}`);
+    return !Number.isNaN(rideDateTime.getTime()) && rideDateTime > new Date();
+  }
 
   function pickLocation(input, fallback) {
     const lat = input.dataset.coordsLat || input.dataset.lat || fallback.lat;
@@ -93,12 +124,18 @@ document.addEventListener("DOMContentLoaded", () => {
   function setSaveButtonState() {
     const nextSource = sourceInput.value.trim();
     const nextDestination = destinationInput.value.trim();
-    routeSaveBtn.disabled = !nextSource || !nextDestination;
+    const nextDate = rideDateInput.value.trim();
+    const nextTime = rideTimeInput.value.trim();
+    routeSaveBtn.disabled = !nextSource || !nextDestination || !nextDate || !nextTime;
   }
 
   function enterEditMode() {
     sourceInput.value = originalSource;
     destinationInput.value = originalDestination;
+    rideDateInput.value = originalRideDate;
+    rideTimeInput.value = originalRideTime;
+    rideDateInput.min = getMinRideDateValue();
+    showRouteError("");
 
     routeViewMode.classList.add("d-none");
     routeEditMode.classList.remove("d-none");
@@ -117,15 +154,27 @@ document.addEventListener("DOMContentLoaded", () => {
   routeCancelBtn.addEventListener("click", () => {
     sourceInput.value = originalSource;
     destinationInput.value = originalDestination;
+    rideDateInput.value = originalRideDate;
+    rideTimeInput.value = originalRideTime;
+    showRouteError("");
     exitEditMode();
   });
 
   routeSaveBtn.addEventListener("click", async () => {
     const nextSource = sourceInput.value.trim();
     const nextDestination = destinationInput.value.trim();
+    const nextRideDate = rideDateInput.value.trim();
+    const nextRideTime = rideTimeInput.value.trim();
     const rideId = routeCard.dataset.rideid;
 
-    if (!nextSource || !nextDestination || !rideId) {
+    if (!nextSource || !nextDestination || !nextRideDate || !nextRideTime || !rideId) {
+      showRouteError("Source, destination, date and time are required.");
+      setSaveButtonState();
+      return;
+    }
+
+    if (!isFutureRideDateTime(nextRideDate, nextRideTime)) {
+      showRouteError("Please select a future date and time.");
       setSaveButtonState();
       return;
     }
@@ -139,10 +188,12 @@ document.addEventListener("DOMContentLoaded", () => {
       !Number.isFinite(destinationLocation.lat) ||
       !Number.isFinite(destinationLocation.lng)
     ) {
+      showRouteError("Please select valid source and destination locations.");
       setSaveButtonState();
       return;
     }
 
+    showRouteError("");
     routeSaveBtn.disabled = true;
 
     try {
@@ -154,25 +205,39 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({
           sorce: nextSource,
           destination: nextDestination,
+          date: nextRideDate,
+          time: nextRideTime,
           sorceLocation,
           destinationLocation
         })
       });
 
       if (!response.ok) {
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (_) {
+          payload = null;
+        }
+        showRouteError((payload && payload.message) || "Unable to update ride details.");
         setSaveButtonState();
         return;
       }
     } catch (error) {
+      showRouteError("Unable to update ride details.");
       setSaveButtonState();
       return;
     }
 
     sourceText.textContent = nextSource;
     destinationText.textContent = nextDestination;
+    rideDateText.textContent = nextRideDate;
+    rideTimeText.textContent = nextRideTime;
 
     originalSource = nextSource;
     originalDestination = nextDestination;
+    originalRideDate = nextRideDate;
+    originalRideTime = nextRideTime;
     originalSourceLocation = sorceLocation;
     originalDestinationLocation = destinationLocation;
 
@@ -188,6 +253,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   sourceInput.addEventListener("input", setSaveButtonState);
   destinationInput.addEventListener("input", setSaveButtonState);
+  rideDateInput.addEventListener("input", () => {
+    showRouteError("");
+    setSaveButtonState();
+  });
+  rideTimeInput.addEventListener("input", () => {
+    showRouteError("");
+    setSaveButtonState();
+  });
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -570,4 +643,117 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Focus the new input */
     stopInput.focus();
   });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const sosBtn = document.getElementById("rideRoomSosBtn");
+  const overlay = document.getElementById("sosOverlay");
+  const countdownEl = document.getElementById("sosCountdown");
+  const cancelBtn = document.getElementById("sosCancelBtn");
+  const routeCard = document.getElementById("routeCard");
+
+  if (!sosBtn || !overlay || !countdownEl || !cancelBtn || !routeCard) {
+    return;
+  }
+
+  let uiState = "idle"; // idle | countdown | active
+  let countdownTimer = null;
+  let countdown = 5;
+
+  const rideId = sosBtn.dataset.rideid || routeCard.dataset.rideid;
+
+  function updateUi() {
+    overlay.classList.toggle("active", uiState === "countdown");
+    overlay.setAttribute("aria-hidden", uiState === "countdown" ? "false" : "true");
+    sosBtn.disabled = uiState === "active";
+  }
+
+  function clearCountdown() {
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+    }
+  }
+
+  function cancelCountdown() {
+    clearCountdown();
+    uiState = "idle";
+    updateUi();
+  }
+
+  async function triggerSOS() {
+    if (uiState !== "countdown") return;
+
+    clearCountdown();
+    uiState = "active";
+    updateUi();
+
+    try {
+      if (!navigator.geolocation) throw new Error("Location access required");
+
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 8000
+        });
+      });
+
+      const response = await fetch("/sos/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rideId,
+          location: {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to send SOS");
+      }
+
+      sosBtn.textContent = "SOS Sent";
+      setTimeout(() => {
+        sosBtn.textContent = "SOS";
+      }, 1800);
+      const fallbackUrl = sosBtn.dataset.soslogurl;
+      if (fallbackUrl) {
+        setTimeout(() => {
+          window.location.href = fallbackUrl;
+        }, 300);
+      }
+    } catch (_) {
+      const fallbackUrl = sosBtn.dataset.soslogurl;
+      if (fallbackUrl) window.location.href = fallbackUrl;
+    } finally {
+      uiState = "idle";
+      updateUi();
+    }
+  }
+
+  function startCountdown() {
+    if (uiState !== "idle") return;
+    countdown = 5;
+    countdownEl.textContent = String(countdown);
+    uiState = "countdown";
+    updateUi();
+    clearCountdown();
+
+    countdownTimer = setInterval(() => {
+      countdown -= 1;
+      countdownEl.textContent = String(Math.max(0, countdown));
+      if (countdown <= 0) {
+        clearCountdown();
+        if (uiState === "countdown") {
+          triggerSOS();
+        }
+      }
+    }, 1000);
+  }
+
+  sosBtn.addEventListener("click", startCountdown);
+  cancelBtn.addEventListener("click", cancelCountdown);
 });

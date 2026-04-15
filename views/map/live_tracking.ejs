@@ -1,285 +1,353 @@
-<% layout("/layout/boilerplate.ejs") %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Live ride tracking — follow your group in real time with turn-by-turn navigation." />
+  <meta name="theme-color" content="#2563eb" />
+  <title><%= rideData.ridename %> · RideSync Live</title>
 
-<script>
-  document.body.classList.add("live-tracking-page");
-</script>
+  <!-- Mapbox GL CSS -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-<!-- ══════════════ DATA INJECTION ══════════════ -->
-<script>
-  const map_token = "<%= map_token %>";
-  const rideData  = <%- JSON.stringify(data) %>;
-  const userid    = "<%= curruser._id %>";
-  const currentUserTravel = <%- JSON.stringify(curruser && curruser.travel ? curruser.travel : null) %>;
-  const rideMembers = <%- JSON.stringify(
-    (members || []).map((m) => {
-      const u = m && m.userId ? m.userId : {};
-      const firstname = u.firstname || "";
-      const lastname = u.lastname || "";
-      const name = `${firstname} ${lastname}`.trim() || "Rider";
-      const initials = `${firstname[0] || "R"}${lastname[0] || ""}`.toUpperCase();
-      return {
-        userId: String(u._id || ""),
-        name,
-        initials: initials || "R",
-        avatar: u.profilePhoto || u.avatar || u.image || ""
-      };
-    })
-  ) %>;
-  window.rideMembers = rideMembers;
-</script>
- <body>
-<!-- NAVBAR -->
-<%
-  const joinedMembersCount = Array.isArray(members) ? members.length : 0;
-  const totalMembersCount = Math.max(joinedMembersCount, Number(data.totalMembers) || joinedMembersCount);
-%>
-<nav class="app-nav">
-  <button class="icon-btn" onclick="history.back()"><i class="bi bi-arrow-left"></i></button>
-  <div class="app-nav-title">
-    <h1><%= data.ridename %></h1>
-    <p class="app-nav-sub"><i class="bi bi-people-fill"></i> <span id="activeUsersCount">1</span>/<span id="totalUsersCount"><%= totalMembersCount %></span> joined</p>
-  </div>
-  <button class="icon-btn"><i class="bi bi-share"></i></button>
-</nav>
+  <!-- Map Page Styles -->
+  <link rel="stylesheet" href="/css/map_page.css" />
 
-<!-- LIVE BADGE -->
-<div class="live-badge"><span class="live-dot"></span> Live Tracking <span id="liveDistanceValue">Distance: 0.00 km</span></div>
+  <style>
+    /* Inline critical: font override for Inter */
+    html, body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  </style>
+</head>
 
-<!-- NAVIGATION DIRECTION BAR -->
-<div class="nav-bar-container" id="navBarContainer" style="display:none;">
-  <div class="nav-icon" id="navIcon"><i class="bi bi-arrow-up-circle-fill"></i></div>
-  <div class="nav-content">
-    <div class="nav-dist" id="navDist"></div>
-    <div class="nav-text" id="navText"></div>
-  </div>
-</div>
+<body>
 
-<!-- MAP -->
-<div id="map"></div>
+  <!-- ══════════════════════════════════════════════════
+       MAP CANVAS (z-index: 0)
+       ══════════════════════════════════════════════════ -->
+  <div id="map"></div>
 
-<!-- MAP CONTROLS -->
-<div class="map-controls">
-  <button class="map-ctrl-btn" id="btnRecenter" aria-label="Recenter Map" title="Recenter">
-    <i class="bi bi-crosshair"></i>
-  </button>
-  <button class="map-ctrl-btn" id="btnMapStyle" aria-label="Toggle Satellite" title="Toggle Map Style">
-    <i class="bi bi-layers"></i>
-  </button>
-  <button class="map-ctrl-btn" id="btnVoiceToggle" aria-label="Toggle Voice" title="Toggle Voice Navigation">
-    <i class="bi bi-volume-mute-fill" id="voiceIcon"></i>
-  </button>
-</div>
-
-
-
-<!-- BOTTOM SHEET -->
-<div class="sheet" id="sheet">
-
-  <!-- Drag handle -->
-  <div class="sheet-handle" id="sheetHandle">
-    <div class="handle-bar"></div>
-    <span class="handle-label" id="handleLabel">↑ Slide up for trip details</span>
+  <!-- ══════════════════════════════════════════════════
+       LOADING SCREEN
+       ══════════════════════════════════════════════════ -->
+  <div id="map-loader" class="map-loading">
+    <div class="spinner"></div>
+    <p>Loading map…</p>
   </div>
 
-  <!-- Peek strip (collapsed only) -->
-  <div class="peek-strip" id="peekStrip">
-    <%
-      const distLabel  = (typeof data.distance  !== 'undefined') ? data.distance  + ' km' : '— km';
-      const etaLabel   = (typeof data.eta        !== 'undefined') ? data.eta                : '—';
-      const stopsLabel = (typeof data.fuelStops  !== 'undefined') ? data.fuelStops + ' Stops' : '— Stops';
-    %>
-    <div class="peek-chip" onclick="window.snapTo('mid')">
-      <i class="bi bi-geo-alt-fill"></i> <span id="distancePeekValue"><%= distLabel %></span>
-    </div>
-    <div class="peek-chip" onclick="window.snapTo('mid')">
-      <i class="bi bi-clock-fill"></i> <span id="etaPeekValue"><%= etaLabel %></span>
-    </div>
-    <div class="peek-chip" onclick="window.snapTo('mid')">
-      <i class="bi bi-fuel-pump-fill"></i> <span id="stopsPeekValue"><%= stopsLabel %></span>
-    </div>
-    
-  </div>
+  <!-- ══════════════════════════════════════════════════
+       TOP BAR (z-index: 1000)
+       ══════════════════════════════════════════════════ -->
+  <header id="top-bar" role="banner">
+    <button id="btn-back" aria-label="Go back" title="Back">&#8592;</button>
 
-  <!-- Tab nav -->
-  <div class="tab-nav" id="tabNav" style="display:none">
-    <button class="tab-btn active" data-tab="plan">Trip Plan</button>
-    <button class="tab-btn"        data-tab="members">Members</button>
-    <button class="tab-btn"        data-tab="chat">Chat</button>
-  </div>
-
-  <!-- Scrollable content -->
-  <div class="sheet-body" id="sheetBody" style="display:none">
-
-    <!-- ── TRIP PLAN ── -->
-    <div class="tab-pane active" id="tab-plan">
-      <div class="row g-2 mb-1">
-        <div class="col-4"><div class="stat-card">
-          <div class="stat-icon dist"><i class="bi bi-signpost-split-fill"></i></div>
-          <div class="stat-value" id="distanceStatValue"><%= distLabel %></div>
-          <div class="stat-label">Distance</div>
-        </div></div>
-        <div class="col-4"><div class="stat-card">
-          <div class="stat-icon time"><i class="bi bi-clock-fill"></i></div>
-          <div class="stat-value" id="etaStatValue"><%= etaLabel %></div>
-          <div class="stat-label">Total ETA</div>
-        </div></div>
-        <div class="col-4"><div class="stat-card">
-          <div class="stat-icon fuel"><i class="bi bi-fuel-pump-fill"></i></div>
-          <div class="stat-value" id="stopsStatValue"><%= stopsLabel %></div>
-          <div class="stat-label">Fuel</div>
-        </div></div>
+    <div class="top-bar-center">
+      <div id="ride-name-display" title="<%= rideData.ridename %>">
+        <%= rideData.ridename %>
       </div>
+      <div id="live-count-label">Loading riders…</div>
+    </div>
 
-      <div class="route-card">
-        <div class="d-flex align-items-center gap-2">
-          <i class="bi bi-lightning-charge-fill text-warning"></i>
-          <span class="route-title"><%= data.ridename %></span>
-        </div>
-        <div class="route-meta"><span id="distanceRouteMetaValue"><%= distLabel %></span> · <span id="etaRouteMetaValue"><%= etaLabel %></span></div>
-        <span class="badge-active">● Active</span>
-      </div>
+    <div id="top-bar-avatar" aria-label="Your avatar">
+      <%
+        const currentMember = rideData.members.find(m => m._id.toString() === userid);
+        let avatarInitials = '??';
+        if (currentMember) {
+          const fn = (currentMember.firstname || '').trim();
+          const ln = (currentMember.lastname  || '').trim();
+          if (fn || ln) {
+            avatarInitials = ((fn[0] || '') + (ln[0] || '')).toUpperCase() || (fn.substring(0,2).toUpperCase());
+          } else {
+            avatarInitials = (currentMember.username || 'U').substring(0, 2).toUpperCase();
+          }
+        }
+      %>
+      <%= avatarInitials %>
+    </div>
+  </header>
 
-      <div class="waypoints">
-        <div class="waypoint">
-          <div class="wp-dot start">A</div>
-          <div class="wp-info">
-            <div class="wp-name"><%= data.source || data.sorce || 'Start' %></div>
-            <div class="wp-sub">Departure</div>
+  <!-- ══════════════════════════════════════════════════
+       NAVIGATION PANEL (z-index: 999) — hidden by default
+       Shown when ride status becomes "active"
+       ══════════════════════════════════════════════════ -->
+  <nav id="nav-panel" aria-label="Turn-by-turn navigation" aria-live="polite">
+    <div id="nav-icon" aria-hidden="true">↑</div>
+    <div class="nav-text">
+      <div id="nav-instruction">Calculating route…</div>
+      <div id="nav-sub">— remaining · ETA: —</div>
+    </div>
+    <button id="btn-speaker" aria-label="Toggle voice navigation" title="Toggle voice">🔊</button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════
+       SEARCH BAR (z-index: 900)
+       ══════════════════════════════════════════════════ -->
+  <div id="search-bar" role="search" aria-label="Search places on map">
+    <div class="search-input-wrapper">
+      <span class="search-icon" aria-hidden="true">🔍</span>
+      <input
+        id="search-input"
+        type="search"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        placeholder="Search places…"
+        aria-label="Search places"
+      />
+      <button id="search-clear" class="search-clear" aria-label="Clear search">✕</button>
+    </div>
+    <div id="search-dropdown" role="listbox" aria-label="Search results"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       RIGHT FLOATING CONTROLS (z-index: 800)
+       ══════════════════════════════════════════════════ -->
+  <div id="right-controls" role="group" aria-label="Map controls">
+    <button id="btn-sos" class="map-ctrl-btn sos-ctrl-btn" aria-label="Trigger SOS" title="Trigger SOS">SOS</button>
+    <button id="btn-recenter"  class="map-ctrl-btn" aria-label="Re-center map"      title="Re-center">🎯</button>
+    <button id="btn-satellite" class="map-ctrl-btn" aria-label="Toggle satellite view" title="Satellite view">🛰️</button>
+    <button id="btn-zoom-in"   class="map-ctrl-btn" aria-label="Zoom in"            title="Zoom in">+</button>
+    <button id="btn-zoom-out"  class="map-ctrl-btn" aria-label="Zoom out"           title="Zoom out">−</button>
+    <button id="btn-compass"   class="map-ctrl-btn" aria-label="Reset map rotation" title="Reset north">🧭</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       BOTTOM SHEET (z-index: 700)
+       ══════════════════════════════════════════════════ -->
+  <aside id="bottom-sheet" aria-label="Ride information panel">
+
+    <!-- Drag handle -->
+    <div class="drag-handle-wrapper" role="slider" aria-label="Resize panel" aria-orientation="vertical">
+      <div class="drag-handle"></div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar" role="tablist" aria-label="Ride sections">
+      <button class="tab-btn active"
+              data-target="tab-trip-plan"
+              role="tab"
+              id="tab-btn-trip"
+              aria-selected="true"
+              aria-controls="tab-trip-plan">
+        🗺 Trip Plan
+      </button>
+      <button class="tab-btn"
+              data-target="tab-members"
+              role="tab"
+              id="tab-btn-members"
+              aria-selected="false"
+              aria-controls="tab-members">
+        👥 Members
+      </button>
+      <button class="tab-btn"
+              data-target="tab-chat"
+              role="tab"
+              id="tab-btn-chat"
+              aria-selected="false"
+              aria-controls="tab-chat">
+        💬 Chat
+      </button>
+    </div>
+
+    <!-- ── TAB 1: TRIP PLAN ─────────────────────────────────────────── -->
+    <div id="tab-trip-plan"
+         class="tab-content active"
+         role="tabpanel"
+         aria-labelledby="tab-btn-trip">
+      <div class="trip-plan-body">
+
+        <!-- Route card -->
+        <div class="trip-route-card">
+          <div class="trip-route-row">
+            <span class="trip-route-icon">📍</span>
+            <div>
+              <div class="trip-route-label">From</div>
+              <!-- sorce is the real DB field name — DO NOT RENAME -->
+              <div class="trip-route-value" title="<%= rideData.sorce %>"><%= rideData.sorce %></div>
+            </div>
+          </div>
+          <div class="trip-route-row">
+            <span class="trip-route-icon">🏁</span>
+            <div>
+              <div class="trip-route-label">To</div>
+              <div class="trip-route-value" title="<%= rideData.destination %>"><%= rideData.destination %></div>
+            </div>
           </div>
         </div>
-        <div class="waypoint">
-          <div class="wp-dot end">B</div>
-          <div class="wp-info">
-            <div class="wp-name"><%= data.destination %></div>
-            <div class="wp-sub">Destination</div>
-          </div>
-        </div>
-      </div>
-      <% if (String(curruser._id) === String(data.adminId)) { %>
-        <button onclick="window.emitStartRide()">Start Ride</button>
-      <% } %>
-    </div>
 
-    <!-- ── MEMBERS ── -->
-    <div class="tab-pane" id="tab-members">
-      <div class="members-list">
-        <% for (let i = 0; i < members.length; i++) { %>
-          <%
-            const fullName = ((members[i].userId.firstname || '') + ' ' + (members[i].userId.lastname || '')).trim();
-            const adminId  = data.adminId;
-            const isAdmin  = String(members[i].userId._id) === String(adminId);
-            const colours  = ['av-bg-1','av-bg-2','av-bg-3','av-bg-4'];
-            const ci       = i % 4;
-            const initials = ((members[i].userId.firstname||'?')[0] + (members[i].userId.lastname||'?')[0]).toUpperCase();
-          %>
-          <div class="member-item" data-member-user-id="<%= String(members[i].userId._id) %>">
-            <div class="member-avatar <%= colours[ci] %>">
-              <%= initials %>
-              <span class="sdot member-presence-dot <%= isAdmin ? 'is-admin' : 'is-offline' %>"></span>
-            </div>
-            <div class="member-info">
-              <div class="member-name"><%= fullName %></div>
-              <div class="member-role"><%= isAdmin ? 'Organizer' : 'Rider' %></div>
-            </div>
-            <span class="mbadge member-presence-badge <%= isAdmin ? 'mbadge-driver is-admin' : 'mbadge-offline is-offline' %>">
-              <%= isAdmin ? 'Admin' : 'Offline' %>
+        <!-- Ride info card -->
+        <div class="trip-info-card">
+          <div class="trip-info-row">
+            <span class="trip-info-icon">👥</span>
+            <span><%= rideData.members.length %> Member<%= rideData.members.length !== 1 ? 's' : '' %></span>
+          </div>
+          <div class="trip-info-row">
+            <span class="trip-info-icon">📅</span>
+            <span>
+              <%
+                const rideDate = new Date(rideData.date);
+                const dateStr  = rideDate.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+              %>
+              <%= dateStr %> &nbsp;·&nbsp; <%= rideData.time %>
             </span>
           </div>
-        <% } %>
-      </div>
-    </div>
-
-    <!-- ── CHAT ── -->
-    <div class="tab-pane" id="tab-chat">
-      <div class="chat-messages" id="chatMessages">
-        <% for (let chat of messages) { %>
-          <% const isMe = chat.senderId._id.toString() === curruser._id.toString(); %>
-          <div class="msg-container <%= isMe ? 'me' : 'them' %>">
-            <% if (!isMe) { %>
-              <div class="msg-av av-bg-1">
-                <%= chat.senderId.firstname[0].toUpperCase() %>
-              </div>
-            <% } %>
-            <div class="msg-bubble <%= isMe ? 'bubble-me' : 'bubble-them' %>">
-              <% if (!isMe) { %>
-                <div class="msg-sender"><%= chat.senderId.firstname %></div>
-              <% } %>
-              <p class="msg-text"><%= chat.message %></p>
-              <div class="msg-meta">
-                <span class="msg-time"><%= new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></span>
-                <% if(isMe) { %><i class="bi bi-check-all ms-1 msg-ticks"></i><% } %>
-              </div>
-            </div>
+          <div class="trip-info-row">
+            <span class="trip-info-icon">📏</span>
+            <span><%= (rideData.distance / 1000).toFixed(1) %> km total</span>
           </div>
-        <% } %>
+          <div class="trip-info-row">
+            <span class="trip-info-icon">⚡</span>
+            <!-- Status badge updated live via JS -->
+            <span id="status-badge" class="status-badge status-<%= rideData.status %>">
+              <%
+                const statusMap = {
+                  active:    '🟢 Active',
+                  upcoming:  '🔵 Upcoming',
+                  completed: '⬜ Completed',
+                  canceled:  '🔴 Canceled',
+                  cancelled: '🔴 Cancelled'
+                };
+              %>
+              <%= statusMap[rideData.status] || rideData.status %>
+            </span>
+          </div>
+        </div>
+
+        <!-- Admin-only ride action buttons -->
+        <div class="trip-actions" id="ride-action-buttons">
+          <button id="btn-start-ride" aria-label="Start the ride">
+            ▶ Start Ride
+          </button>
+          <button id="btn-end-ride" aria-label="End the ride">
+            ⏹ End Ride
+          </button>
+        </div>
+
       </div>
     </div>
 
-  </div><!-- /sheet-body -->
-</div><!-- /sheet -->
+    <!-- ── TAB 2: MEMBERS ───────────────────────────────────────────── -->
+    <div id="tab-members"
+         class="tab-content"
+         role="tabpanel"
+         aria-labelledby="tab-btn-members">
+      <div id="members-list" aria-label="Ride members list">
+        <!-- Rendered dynamically by renderMembersPanel() in map_page.js -->
+        <div style="padding:24px 16px;color:#64748b;text-align:center;font-size:13px;">
+          Loading members…
+        </div>
+      </div>
+    </div>
 
-<!-- CHAT INPUT — outside sheet so it stays above keyboard -->
-<div class="chat-bar" id="chatBar">
-  <input class="chat-input" id="chatInput" type="text" placeholder="Type a message…"/>
-  <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send message">
-    <i class="bi bi-send-fill"></i>
-  </button>
-</div>
+    <!-- ── TAB 3: CHAT ──────────────────────────────────────────────── -->
+    <div id="tab-chat"
+         class="tab-content"
+         role="tabpanel"
+         aria-labelledby="tab-btn-chat"
+         aria-live="polite">
+      <div id="chat-messages" aria-label="Chat messages">
+        <!-- History loaded by loadChatHistory() in map_page.js on page open -->
+        <div class="chat-empty">No messages yet. Say hello! 👋</div>
+      </div>
+      <div class="chat-input-bar">
+        <input
+          id="chat-input"
+          type="text"
+          placeholder="Type a message…"
+          autocomplete="off"
+          maxlength="500"
+          aria-label="Chat message input"
+        />
+        <button id="btn-send-chat" aria-label="Send message" title="Send">➤</button>
+      </div>
+    </div>
 
-<script>
-  (function () {
-    "use strict";
+  </aside>
 
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = src;
-        s.onload = resolve;
-        s.onerror = reject;
-        document.body.appendChild(s);
-      });
-    }
+  <!-- ══════════════════════════════════════════════════
+       RIDE ENDED OVERLAY (z-index: 2000)
+       ══════════════════════════════════════════════════ -->
+  <div id="ride-ended-overlay" role="dialog" aria-modal="true" aria-label="Ride completed">
+    <div class="overlay-card">
+      <div class="overlay-icon">🏁</div>
+      <h2>Ride Completed!</h2>
+      <p>You have reached your destination.<br />Thanks for riding with RideSync.</p>
+      <button id="btn-back-to-rides" onclick="window.location.href='/ridesynk/<%= userid %>/rides'">
+        Back to Rides
+      </button>
+    </div>
+  </div>
 
-    async function bootTracking() {
-      await loadScript("/socket.io/socket.io.js");
-      await loadScript("/js/map_page.js");
-      await loadScript("/js/distanceUtils.js");
-      await loadScript("/js/tracking.js");
-      await loadScript("/js/socket.js");
-      await loadScript("/js/sos.js");
-    }
+  <!-- ══════════════════════════════════════════════════
+       TOAST CONTAINER (z-index: 1100)
+       ══════════════════════════════════════════════════ -->
+  <div id="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
 
-    async function guardAndStart() {
-      const lp = window.RideSynkLocationPermission;
-      if (!lp) {
-        await bootTracking();
-        return;
-      }
+  <!-- ══════════════════════════════════════════════════
+       NOTIFICATION STACK (z-index: 1100)
+       Rich toast-style notifications for member events
+       ══════════════════════════════════════════════════ -->
+  <div id="notif-stack" aria-live="polite" aria-label="Ride notifications"></div>
 
-      const permission = await lp.queryPermission();
-      if (permission === "granted") {
-        await bootTracking();
-        return;
-      }
+  <div id="sos-overlay" class="sos-overlay" aria-hidden="true">
+    <div class="sos-overlay-card">
+      <h2>Send SOS?</h2>
+      <p>Alert will be sent automatically in</p>
+      <div id="sos-countdown" class="sos-countdown">5</div>
+      <div id="sos-timestamp" style="font-size: 13px; color:#ef4444; margin-bottom: 14px; font-weight:700;"></div>
+      <button id="sos-cancel-btn" type="button" class="sos-cancel-btn">Cancel</button>
+    </div>
+  </div>
 
-      lp.showBlocker("Location access is required", async () => {
-        try {
-          await lp.requestCurrentPosition();
-          lp.hideBlocker();
-          await bootTracking();
-        } catch (err) {
-          const message = err && err.code === 1
-            ? "Please enable location permission to continue"
-            : (err && err.code === 3
-              ? "Turn on GPS for better accuracy"
-              : "Unable to fetch location");
-          lp.showToast(message);
-        }
-      });
-    }
+  <div id="sos-alert-stack" class="sos-alert-stack" aria-live="polite" aria-label="SOS alerts"></div>
 
-    guardAndStart();
-  })();
-</script>
+  <!-- ══════════════════════════════════════════════════
+       MAPBOX GL JS (CDN — v3.3.0)
+       ══════════════════════════════════════════════════ -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+  <!-- ══════════════════════════════════════════════════
+       INJECT EJS SERVER VARIABLES INTO window.*
+       All client JS reads from window.__ variables.
+       CRITICAL: sorceLocation is GeoJSON — coordinates:[lng,lat]
+       ══════════════════════════════════════════════════ -->
+  <script>
+    // ── Mapbox access token ──────────────────────────────
+    window.__MAP_TOKEN__ = "<%- map_token %>";
+
+    // ── Currently logged-in user _id ─────────────────────
+    window.__USERID__    = "<%- userid %>";
+
+    // ── Full ride document serialized to JSON ─────────────
+    // Fields exactly as in /models/ride.js:
+    //   adminId, ridename, sorce, sorceLocation{type,coordinates:[lng,lat]},
+    //   destination, destinationLocation, status, totalMembers, distance, date, time
+    // members is populated array of user objects from ride_member join (server populates)
+    window.__RIDE_DATA__ = <%- JSON.stringify({
+      _id:                 rideData._id,
+      adminId:             rideData.adminId,
+      ridename:            rideData.ridename,
+      sorce:               rideData.sorce,
+      sorceLocation:       rideData.sorceLocation,
+      destination:         rideData.destination,
+      destinationLocation: rideData.destinationLocation,
+      status:              rideData.status,
+      totalMembers:        rideData.totalMembers,
+      distance:            rideData.distance,
+      date:                rideData.date,
+      time:                rideData.time,
+      members:             rideData.members
+    }) %>;
+  </script>
+
+  <!-- ══════════════════════════════════════════════════
+       MAIN CLIENT MODULE (ES module — imports socket.js)
+       ══════════════════════════════════════════════════ -->
+  <script type="module" src="/js/map_page.js"></script>
+
 </body>
+</html>

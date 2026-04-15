@@ -9,13 +9,43 @@ const ExpressError=require("../utils/ExpressError.js");
 
 module.exports.livetracking=async (req,res,next)=>{
     const {id} = req.params;
-    const data = await Ride.findOne({_id:id});
-    if(!data){
+    const ride = await Ride.findOne({_id:id});
+    if(!ride){
         return next(new ExpressError(404,"Ride not found..."));
     }
-    const members=await RideMember.find({rideId:id}).populate("userId");
-    const messages = await Message.find({ rideId:id }).sort({ time: 1 }).populate({path:"senderId",select:"firstname"});
-    return res.render("map/live_tracking.ejs",{data:data.toObject(),map_token,members,messages})
+
+    // Populate members from ride_member collection — join with User documents
+    // userId field in ride_member.js → user fields: _id, username, firstname, lastname
+    const rideMembers = await RideMember.find({ rideId: id, status: "active", isActive: true })
+        .populate({ path: "userId", select: "_id username firstname lastname email" });
+
+    // Build a flat members array with user data + role — used in live_tracking.ejs
+    const membersPopulated = rideMembers.map(rm => ({
+        _id:       rm.userId._id,
+        username:  rm.userId.username,
+        firstname: rm.userId.firstname,
+        lastname:  rm.userId.lastname,
+        email:     rm.userId.email,
+        role:      rm.role   // "admin" | "member" — from ride_member.js
+    }));
+
+    // Build rideData object with exact field names from ride.js schema
+    // Embed members so live_tracking.ejs can serialize the whole object in one JSON blob
+    const rideData = {
+        ...ride.toObject(),
+        members: membersPopulated
+    };
+
+    // message.js uses 'createdAt' (timestamps), NOT a separate 'time' field
+    // senderId ref is to User — select firstname for display
+    const messages = await Message.find({ rideId: id })
+        .sort({ createdAt: 1 })   // ← FIXED: was { time: 1 } but 'time' field does not exist in message.js
+        .populate({ path: "senderId", select: "firstname lastname username" });
+
+    // live_tracking.ejs expects: rideData, userid, map_token
+    const userid = req.user._id.toString();
+
+    return res.render("map/live_tracking.ejs", { rideData, map_token, userid, messages });
 }
 
 module.exports.addmembersform=async (req,res)=>{

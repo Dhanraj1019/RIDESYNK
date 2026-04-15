@@ -101,6 +101,12 @@
       gap: 0.35rem;
     }
 
+    .route-edit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
     .route-input-label {
       font-size: 0.7rem;
       color: var(--text-light);
@@ -181,7 +187,18 @@
       background: #e9edf4;
     }
 
+    .route-edit-error {
+      margin: -0.1rem 0 0;
+      color: #dc2626;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
     @media (max-width: 520px) {
+      .route-edit-grid {
+        grid-template-columns: 1fr;
+      }
+
       .route-edit-actions {
         justify-content: stretch;
       }
@@ -203,6 +220,38 @@
       display: flex; flex-direction: column; gap: 0.5rem;
     }
     .route-stops p { margin: 0; }
+
+    .route-meta-row {
+      display: flex;
+      gap: 0.65rem;
+      margin-top: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .route-meta-chip {
+      min-width: 110px;
+      padding: 0.65rem 0.8rem;
+      border-radius: 12px;
+      background: #f8faff;
+      border: 1px solid #e6ebf5;
+      display: flex;
+      flex-direction: column;
+      gap: 0.18rem;
+    }
+
+    .route-meta-label {
+      font-size: 0.66rem;
+      color: var(--text-light);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .route-meta-value {
+      font-size: 0.8rem;
+      color: var(--text-dark);
+      font-weight: 700;
+    }
 
     /* -- Actions grid -- */
     .actions-grid {
@@ -547,4 +596,59 @@
 .btn-cancel:disabled {
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.sos-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2200;
+}
+
+.sos-overlay.active {
+  display: flex;
+}
+
+.sos-overlay-card {
+  width: min(340px, 90vw);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.35);
+  text-align: center;
+  padding: 20px;
+}
+
+.sos-overlay-card h2 {
+  margin: 0 0 6px;
+  color: #b91c1c;
+  font-size: 22px;
+}
+
+.sos-overlay-card p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.sos-countdown {
+  margin: 12px 0 16px;
+  font-size: 42px;
+  font-weight: 800;
+  color: #dc2626;
+  line-height: 1;
+}
+
+.sos-cancel-btn {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 14px;
 }
