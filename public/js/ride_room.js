@@ -647,113 +647,111 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   const sosBtn = document.getElementById("rideRoomSosBtn");
-  const overlay = document.getElementById("sosOverlay");
-  const countdownEl = document.getElementById("sosCountdown");
-  const cancelBtn = document.getElementById("sosCancelBtn");
+  const overlay = document.getElementById("sosLogsOverlay");
+  const closeBtn = document.getElementById("sosLogsCloseBtn");
+  const container = document.getElementById("sosLogsContainer");
   const routeCard = document.getElementById("routeCard");
 
-  if (!sosBtn || !overlay || !countdownEl || !cancelBtn || !routeCard) {
+  if (!sosBtn || !overlay || !closeBtn || !container || !routeCard) {
     return;
   }
 
-  let uiState = "idle"; // idle | countdown | active
-  let countdownTimer = null;
-  let countdown = 5;
-
   const rideId = sosBtn.dataset.rideid || routeCard.dataset.rideid;
 
-  function updateUi() {
-    overlay.classList.toggle("active", uiState === "countdown");
-    overlay.setAttribute("aria-hidden", uiState === "countdown" ? "false" : "true");
-    sosBtn.disabled = uiState === "active";
-  }
-
-  function clearCountdown() {
-    if (countdownTimer) {
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-    }
-  }
-
-  function cancelCountdown() {
-    clearCountdown();
-    uiState = "idle";
-    updateUi();
-  }
-
-  async function triggerSOS() {
-    if (uiState !== "countdown") return;
-
-    clearCountdown();
-    uiState = "active";
-    updateUi();
-
+  async function fetchAndRenderLogs() {
     try {
-      if (!navigator.geolocation) throw new Error("Location access required");
+      container.innerHTML = '<div class="no-logs">Loading logs...</div>';
+      const res = await fetch(`/sos/ride/${rideId}`);
+      if (!res.ok) throw new Error("Failed to fetch logs");
+      
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || "Failed to fetch logs");
+      
+      // Merge active and resolved logs and sort by newest first
+      const activeLogs = data.active || [];
+      const resolvedLogs = data.resolved || [];
+      const allLogs = [...activeLogs, ...resolvedLogs].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
 
-      const pos = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 8000
-        });
-      });
+      container.innerHTML = "";
 
-      const response = await fetch("/sos/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rideId,
-          location: {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          }
-        })
-      });
-
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Failed to send SOS");
+      if (allLogs.length === 0) {
+        container.innerHTML = '<div class="no-logs">No SOS logs found for this ride.</div>';
+        return;
       }
 
-      sosBtn.textContent = "SOS Sent";
-      setTimeout(() => {
-        sosBtn.textContent = "SOS";
-      }, 1800);
-      const fallbackUrl = sosBtn.dataset.soslogurl;
-      if (fallbackUrl) {
-        setTimeout(() => {
-          window.location.href = fallbackUrl;
-        }, 300);
+      function escapeHtml(text) {
+        if (!text) return "";
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
       }
-    } catch (_) {
-      const fallbackUrl = sosBtn.dataset.soslogurl;
-      if (fallbackUrl) window.location.href = fallbackUrl;
-    } finally {
-      uiState = "idle";
-      updateUi();
+
+      allLogs.forEach(log => {
+        const isResolved = log.status === "resolved";
+        const div = document.createElement("div");
+        div.className = "sos-log-item";
+
+        // Build location display string
+        let locationStr = "Unknown location";
+        if (log.location && log.location.address) {
+          locationStr = log.location.address;
+        } else if (log.location && typeof log.location.lat === "number" && typeof log.location.lng === "number") {
+          locationStr = `${log.location.lat.toFixed(4)}, ${log.location.lng.toFixed(4)}`;
+        }
+
+        const resolveContent = isResolved
+          ? `
+             <div class="log-detail"><strong>✅ Resolved by:</strong> ${escapeHtml(log.resolvedByName || "Unknown")}</div>
+             <div class="log-detail"><strong>🕓 Resolved:</strong> ${new Date(log.resolvedAt).toLocaleString()}</div>
+             <div class="status-badge resolved">RESOLVED</div>
+            `
+          : `<div class="status-badge active">ACTIVE</div>`;
+
+        div.innerHTML = `
+           <div class="log-header ${isResolved ? "resolved" : "active"}">🚨 SOS ALERT</div>
+           <div class="log-detail"><strong>👤 Created by:</strong> ${escapeHtml(log.userName || "Unknown")}</div>
+           <div class="log-detail"><strong>📍 Location:</strong> ${escapeHtml(locationStr)}</div>
+           <div class="log-detail"><strong>🕒 Created:</strong> ${new Date(log.createdAt).toLocaleString()}</div>
+           ${resolveContent}
+        `;
+        container.appendChild(div);
+      });
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = '<div class="no-logs">Error loading SOS logs. Please try again.</div>';
     }
   }
 
-  function startCountdown() {
-    if (uiState !== "idle") return;
-    countdown = 5;
-    countdownEl.textContent = String(countdown);
-    uiState = "countdown";
-    updateUi();
-    clearCountdown();
-
-    countdownTimer = setInterval(() => {
-      countdown -= 1;
-      countdownEl.textContent = String(Math.max(0, countdown));
-      if (countdown <= 0) {
-        clearCountdown();
-        if (uiState === "countdown") {
-          triggerSOS();
-        }
-      }
-    }, 1000);
+  function openLogsPanel() {
+    overlay.classList.remove("d-none");
+    overlay.setAttribute("aria-hidden", "false");
+    fetchAndRenderLogs();
   }
 
-  sosBtn.addEventListener("click", startCountdown);
-  cancelBtn.addEventListener("click", cancelCountdown);
+  function closeLogsPanel() {
+    overlay.classList.add("d-none");
+    overlay.setAttribute("aria-hidden", "true");
+  }
+
+  sosBtn.addEventListener("click", openLogsPanel);
+  closeBtn.addEventListener("click", closeLogsPanel);
+  
+  // Close if clicking outside the panel
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      closeLogsPanel();
+    }
+  });
+
+  // Optional socket listening for real-time SOS additions
+  if (typeof socket !== "undefined" && socket) {
+    socket.on("sos:alert", () => {
+      if (!overlay.classList.contains("d-none")) fetchAndRenderLogs();
+    });
+    socket.on("sos:resolved", () => {
+      if (!overlay.classList.contains("d-none")) fetchAndRenderLogs();
+    });
+  }
 });

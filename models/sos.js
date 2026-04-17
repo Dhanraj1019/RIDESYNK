@@ -14,6 +14,10 @@ const sosSchema = new mongoose.Schema(
             required: true,
             index: true
         },
+        resolvedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        },
         status: {
             type: String,
             enum: ["active", "resolved"],

@@ -1,0 +1,138 @@
+/* sosLogs.css */
+.sos-logs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+
+.sos-logs-overlay.d-none {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sos-logs-panel {
+  background: #FFFFFF;
+  color: #1F2937;
+  width: 100%;
+  max-width: 600px;
+  height: 80vh;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(0);
+  transition: transform 0.3s ease;
+}
+
+.sos-logs-overlay.d-none .sos-logs-panel {
+  transform: translateY(100%);
+}
+
+.sos-logs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.sos-logs-header h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1F2937;
+}
+
+.sos-logs-close-btn {
+  background: none;
+  border: none;
+  color: #6B7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.sos-logs-close-btn:hover {
+  color: #1F2937;
+}
+
+.sos-logs-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sos-log-item {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-header {
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.log-header.active {
+  color: #EF4444; /* Red */
+}
+
+.log-header.resolved {
+  color: #10B981; /* Green */
+}
+
+.log-detail {
+  font-size: 0.875rem;
+  color: #6B7280; /* Light text */
+  display: flex;
+  gap: 6px;
+}
+
+.log-detail strong {
+  color: #374151; /* Dark text */
+}
+
+.status-badge {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.status-badge.active {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.status-badge.resolved {
+  background: #D1FAE5;
+  color: #059669;
+}
+
+.no-logs {
+  text-align: center;
+  color: #6B7280;
+  font-size: 0.875rem;
+  margin-top: 40px;
+}

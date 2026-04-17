@@ -6,6 +6,9 @@ const { isAuthenticated } = require("../midelwear");
 router.route("/update")
 .patch(isAuthenticated,usercontroller.update);
 
+router.route("/change-password")
+.post(isAuthenticated,usercontroller.changePassword);
+
 router.route("/:id/delete")
 .delete(isAuthenticated,usercontroller.delete);
 

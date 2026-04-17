@@ -9,6 +9,13 @@ const ExpressError=require("../utils/ExpressError.js");
 
 module.exports.livetracking=async (req,res,next)=>{
     const {id} = req.params;
+    
+    // Add Security Check: Verify user is a member of this ride
+    const isMember = await validateRideMember(id, req.user._id);
+    if (!isMember) {
+        return next(new ExpressError(403, "Not authorized to view live tracking"));
+    }
+
     const ride = await Ride.findOne({_id:id});
     if(!ride){
         return next(new ExpressError(404,"Ride not found..."));
@@ -48,23 +55,48 @@ module.exports.livetracking=async (req,res,next)=>{
     return res.render("map/live_tracking.ejs", { rideData, map_token, userid, messages });
 }
 
-module.exports.addmembersform=async (req,res)=>{
-    const {id}=req.params;
-    const rideroom=await RideMember.find({rideId:id}).populate("userId").populate("rideId");
-    // console.log(rideroom)
-    // FIX: added return
-    return res.render("rides/add_members.ejs",{data:rideroom,id});
+module.exports.addmembersform=async (req,res,next)=>{
+    try {
+        const {id}=req.params;
+        const isMember = await validateRideMember(id, req.user._id);
+        if (!isMember) {
+            return next(new ExpressError(403, "Not authorized to access this ride"));
+        }
+        
+        const ride = await Ride.findById(id);
+        if (!ride || ride.adminId.toString() !== req.user._id.toString()) {
+            return next(new ExpressError(403, "Only the ride admin can add members"));
+        }
+
+        const rideroom=await RideMember.find({rideId:id}).populate("userId").populate("rideId");
+        // console.log(rideroom)
+        // FIX: added return
+        return res.render("rides/add_members.ejs",{data:rideroom,id});
+    } catch (e) {
+        return next(e);
+    }
 }
 
-module.exports.ridedetails=async (req,res)=>{
-    const {id}=req.params;
-    const data=await Ride.findOne({_id:id});
-    const members=await RideMember.find({rideId:id}).populate("userId");
-    // console.log("data = ",data)
-    // console.log("id = ",id)
-    // console.log("members = ",members)
-    // FIX: added return
-    return res.render("rides/ride_room.ejs",{data,members,map_token:process.env.MAP_TOKEN});
+module.exports.ridedetails=async (req,res,next)=>{
+    try {
+        const {id}=req.params;
+        const isMember = await validateRideMember(id, req.user._id);
+        if (!isMember) {
+            return next(new ExpressError(403, "Not authorized to view this ride"));
+        }
+
+        const data=await Ride.findOne({_id:id});
+        if (!data) return next(new ExpressError(404, "Ride not found"));
+        
+        const members=await RideMember.find({rideId:id}).populate("userId");
+        // console.log("data = ",data)
+        // console.log("id = ",id)
+        // console.log("members = ",members)
+        // FIX: added return
+        return res.render("rides/ride_room.ejs",{data,members,map_token:process.env.MAP_TOKEN});
+    } catch (e) {
+        return next(e);
+    }
 }
 
 module.exports.searchmember=async (req, res) => {

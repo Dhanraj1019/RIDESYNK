@@ -7,14 +7,23 @@
   // const badgeClass = { active:"badge-status badge-active", upcoming:"badge-status badge-upcoming", completed:"badge-status badge-completed" };
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
-  document.getElementById("greeting-text").textContent   = greeting;
+  if (document.getElementById("greeting-text")) {
+      document.getElementById("greeting-text").textContent = greeting;
+  }
 
   
   const drawer  = document.getElementById("profile-drawer");
   const overlay = document.getElementById("drawer-overlay");
-  document.getElementById("open-drawer").addEventListener("click",  () => { drawer.classList.add("open");    overlay.classList.add("open");    });
-  document.getElementById("close-drawer").addEventListener("click", () => { drawer.classList.remove("open"); overlay.classList.remove("open"); });
-  overlay.addEventListener("click", () => { drawer.classList.remove("open"); overlay.classList.remove("open"); });
+  
+  if (document.getElementById("open-drawer") && drawer && overlay) {
+      document.getElementById("open-drawer").addEventListener("click",  () => { drawer.classList.add("open");    overlay.classList.add("open");    });
+  }
+  if (document.getElementById("close-drawer") && drawer && overlay) {
+      document.getElementById("close-drawer").addEventListener("click", () => { drawer.classList.remove("open"); overlay.classList.remove("open"); });
+  }
+  if (overlay && drawer) {
+      overlay.addEventListener("click", () => { drawer.classList.remove("open"); overlay.classList.remove("open"); });
+  }
 
   function setActive(tab) {
     document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));

@@ -209,7 +209,7 @@ module.exports.createride = async (req, res) => {
         });
         // console.log(newRide);
         const data = await newRide.save();
-        await RideMember.insertOne({ rideId: data._id, userId: req.user._id, role: "admin" });
+        await RideMember.create({ rideId: data._id, userId: req.user._id, role: "admin" });
         req.flash("success", "ride created...!");
         return res.redirect(`/ridesynk/rideroom/${data._id.toString()}`);
     } catch (error) {

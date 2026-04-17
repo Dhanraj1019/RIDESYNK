@@ -1019,6 +1019,12 @@ function activateRideMode() {
   updateStatusBadge("active");
 
   toast("Ride started! Navigation enabled.", "success");
+  
+  // Show SOS button when ride starts or when entering an already running ride
+  const btnSos = document.getElementById("btn-sos") || document.querySelector(".sos-ctrl-btn");
+  if (btnSos) {
+    btnSos.style.display = "flex";
+  }
 
   // ALWAYS use admin's live location for the main route
   if (userMarkers.has(adminUserId)) {
@@ -1563,13 +1569,53 @@ socket.on("memberOffline", ({ userId }) => {
 
 socket.on("sos:triggered", ({ sos }) => {
   if (!sos || sos.status !== "active") return;
+  
+  // Track in active SOS list if needed
+  const existingIdx = activeSOSList.findIndex(s => String(s.userId || s._id) === String(sos.userId || sos._id));
+  if (existingIdx === -1) {
+    activeSOSList.push(sos);
+  }
+
   upsertSosCard(sos);
   toast("SOS alert received.", "warn");
+  
+  const isMine = String(sos.userId) === String(userid);
+
+  // Trigger visual and auditory alerts (Mute sound for the creator for safety)
+  if (!isMine) {
+    isMuted = false;
+    playSOSSound();
+    if (sos.location) {
+      focusMap(sos.location);
+    }
+  }
+  
+  activateSOSMarker(sos.userId);
 });
 
 socket.on("sos:created", ({ sos }) => {
   if (!sos || sos.status !== "active") return;
+  
+  // Track in active SOS list if needed
+  const existingIdx = activeSOSList.findIndex(s => String(s.userId || s._id) === String(sos.userId || sos._id));
+  if (existingIdx === -1) {
+    activeSOSList.push(sos);
+  }
+
   upsertSosCard(sos);
+  
+  const isMine = String(sos.userId) === String(userid);
+
+  // Trigger visual and auditory alerts (Mute sound for the creator for safety)
+  if (!isMine) {
+    isMuted = false;
+    playSOSSound();
+    if (sos.location) {
+      focusMap(sos.location);
+    }
+  }
+  
+  activateSOSMarker(sos.userId);
 });
 
 function removeSOS(userId) {
@@ -1612,25 +1658,6 @@ socket.on("sos:resolved", ({ sosId, sos }) => {
   if (sos && sos.status === "resolved") {
     toast("SOS resolved.", "success");
   }
-});
-
-socket.on("sosResolved", ({ userId }) => {
-  if (userId) {
-    removeSOS(userId);
-  }
-  toast("SOS resolved and system reset.", "success");
-});
-
-socket.on("receiveSOS", (data) => {
-  activeSOSList.push(data);
-  showSOSPopup(data);
-  
-  // New SOS triggers sound again
-  isMuted = false;
-  playSOSSound();
-  
-  focusMap(data && data.location);
-  activateSOSMarker(data && data.userId);
 });
 
 /* ── NOTIFICATION SYSTEM ─────────────────────────────────────────────────── */
@@ -1725,6 +1752,11 @@ async function checkAndActivateRideStatus() {
   // Let activateRideMode() handle it — it has its own guard + nav-panel logic.
   if (effectiveStatus === 'active' || effectiveStatus === 'started') {
     console.log('[RideSynk] Ride already started — activating nav');
+    
+    // Also explicitly verify SOS is brought back
+    const btnSos = document.getElementById("btn-sos") || document.querySelector(".sos-ctrl-btn");
+    if (btnSos) btnSos.style.display = "flex";
+    
     activateRideMode();
   } else if (effectiveStatus === 'ended' || effectiveStatus === 'completed') {
     console.log('[RideSynk] Ride ended — showing overlay');

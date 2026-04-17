@@ -317,31 +317,34 @@
        ══════════════════════════════════════════════════ -->
   <script>
     // ── Mapbox access token ──────────────────────────────
-    window.__MAP_TOKEN__ = "<%- map_token %>";
+    window.__MAP_TOKEN__ = "<%= typeof map_token !== 'undefined' ? map_token : '' %>";
 
     // ── Currently logged-in user _id ─────────────────────
-    window.__USERID__    = "<%- userid %>";
+    window.__USERID__    = "<%= typeof userid !== 'undefined' ? userid : '' %>";
 
     // ── Full ride document serialized to JSON ─────────────
     // Fields exactly as in /models/ride.js:
     //   adminId, ridename, sorce, sorceLocation{type,coordinates:[lng,lat]},
     //   destination, destinationLocation, status, totalMembers, distance, date, time
     // members is populated array of user objects from ride_member join (server populates)
-    window.__RIDE_DATA__ = <%- JSON.stringify({
-      _id:                 rideData._id,
-      adminId:             rideData.adminId,
-      ridename:            rideData.ridename,
-      sorce:               rideData.sorce,
-      sorceLocation:       rideData.sorceLocation,
-      destination:         rideData.destination,
-      destinationLocation: rideData.destinationLocation,
-      status:              rideData.status,
-      totalMembers:        rideData.totalMembers,
-      distance:            rideData.distance,
-      date:                rideData.date,
-      time:                rideData.time,
-      members:             rideData.members
-    }) %>;
+    <% 
+      const safeRideData = {
+        _id:                 rideData._id,
+        adminId:             rideData.adminId,
+        ridename:            rideData.ridename,
+        sorce:               rideData.sorce,
+        sorceLocation:       rideData.sorceLocation,
+        destination:         rideData.destination,
+        destinationLocation: rideData.destinationLocation,
+        status:              rideData.status,
+        totalMembers:        rideData.totalMembers,
+        distance:            rideData.distance,
+        date:                rideData.date,
+        time:                rideData.time,
+        members:             rideData.members
+      };
+    %>
+    window.__RIDE_DATA__ = <%- JSON.stringify(safeRideData).replace(/</g, '\\u003c') %>;
   </script>
 
   <!-- ══════════════════════════════════════════════════

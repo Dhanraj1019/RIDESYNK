@@ -52,7 +52,12 @@
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
               </svg>
             </div>
-            <input class="field-input form-control" required type="text" name="ride[sorce]" placeholder="Start Location" />
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <input class="field-input form-control" required type="text" name="ride[sorce]" placeholder="Start Location" />
+              <button type="button" class="pick-on-map-btn" data-mode="sorce" style="align-self: flex-start; background: none; border: none; color: #6C63FF; font-size: 13px; font-weight: 500; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="18"></line><line x1="15" y1="6" x2="15" y2="21"></line></svg> Pick on Map
+              </button>
+            </div>
           </div>
   
           <!-- Dynamic stops -->
@@ -75,7 +80,12 @@
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
               </svg>
             </div>
-            <input class="field-input form-control" type="text" required name="ride[destination]" placeholder="Destination" />
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <input class="field-input form-control" type="text" required name="ride[destination]" placeholder="Destination" />
+              <button type="button" class="pick-on-map-btn" data-mode="destination" style="align-self: flex-start; background: none; border: none; color: #FF4B4B; font-size: 13px; font-weight: 500; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="18"></line><line x1="15" y1="6" x2="15" y2="21"></line></svg> Pick on Map
+              </button>
+            </div>
           </div>
   
         </div>
@@ -86,7 +96,7 @@
     </form>
   </div>
 </div>
-
+<%- include("../partials/locationPicker.ejs") %>
 </body>
 
 

@@ -391,6 +391,7 @@ input {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.5px;
+  display: none; /* Hidden by default until ride starts */
 }
 
 .sos-ctrl-btn:hover {

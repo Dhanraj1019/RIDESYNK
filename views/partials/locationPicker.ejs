@@ -1,0 +1,40 @@
+<!-- locationPicker.ejs (Reusable Modal for Mapbox) -->
+<link rel="stylesheet" href="/css/locationPicker.css">
+<script src="/js/locationPicker.js" defer></script>
+
+<div id="locationPickerModal" class="location-picker-modal hide">
+  <div class="location-picker-header">
+    <button class="lp-back-btn" id="lp-close-btn" aria-label="Close Map">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    <h2 class="lp-title">Select Location</h2>
+  </div>
+
+  <div class="lp-map-container">
+    <div id="lp-map"></div>
+    <div class="lp-marker-center" id="lp-marker">
+      <!-- We will color this via JS depending on mode -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="lp-bottom-panel">
+    <div class="lp-address-preview" id="lp-address-text">
+       Locating...
+    </div>
+    
+    <button id="lp-use-my-location" class="lp-btn-outline">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+      Use My Location
+    </button>
+    
+    <button id="lp-confirm-btn" class="lp-btn-primary">
+      Confirm Location
+    </button>
+  </div>
+</div>

@@ -57,12 +57,36 @@ module.exports.login=async (req, res) => {
    module.exports.signup=async (req,res,next)=>{
        try{
            let {user,password}=req.body;
-           const testdata=await User.find({$or:[{username:user.username},{email:user.email}]});
+           
+           // Defense against NoSQL operator injection and Type mismatch
+           if (!user || typeof user.username !== 'string' || typeof user.email !== 'string') {
+               req.flash("error","Invalid user credentials provided.");
+               return res.redirect("/ridesynk/entry/signup");
+           }
+           
+           const safeUsername = String(user.username).trim();
+           const safeEmail = String(user.email).trim();
+
+           const testdata=await User.find({$or:[{username:safeUsername},{email:safeEmail}]});
            if(testdata.length>0){
                req.flash("error","with this crediencials user alrady exist...");
                return res.redirect("/ridesynk/entry/signup");
            } 
-           let newuser=new User(user);
+           
+           // Defense against Mass Assignment vulnerability
+           const safeUserPayload = {
+               username: safeUsername,
+               email: safeEmail
+           };
+           
+           // Pick optional fields safely
+           ['firstname', 'lastname', 'phonenumber', 'vehical'].forEach(field => {
+               if (typeof user[field] === 'string' && user[field].trim().length > 0) {
+                   safeUserPayload[field] = user[field].trim();
+               }
+           });
+
+           let newuser=new User(safeUserPayload);
            let result = await User.register(newuser,password);
            req.login(result,(err)=>{
                if(err){

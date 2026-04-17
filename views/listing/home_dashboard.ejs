@@ -1,5 +1,21 @@
 <% layout("/layout/boilerplate.ejs") %>
 
+<%
+  const getInitials = (user) => {
+    if (user.firstname?.length > 0 && user.lastname?.length > 0) {
+      return user.firstname[0].toUpperCase() + user.lastname[0].toUpperCase();
+    }
+    return (user.username?.[0] || '?').toUpperCase();
+  };
+
+  const getFullName = (user) => {
+    if (user.firstname && user.lastname) {
+      return user.firstname + " " + user.lastname;
+    }
+    return user.username || 'User';
+  };
+%>
+
 <body>
   <div class="page">
     <div class="brand-bar">RideSynk</div>
@@ -7,12 +23,12 @@
     <div class="header-row">
       <button class="avatar-trigger" id="open-drawer">
         <div class="avatar-circle" id="avatar-initials">
-          <%= (data.firstname && data.lastname ? data.firstname[0].toUpperCase() + data.lastname[0].toUpperCase() : data.username[0].toUpperCase() )%>
+          <%= getInitials(data) %>
         </div>
         <div>
           <p class="greeting-sub" id="greeting-text">Good Morning</p>
           <p class="greeting-name" id="user-name">
-            <%= ((data.firstname && data.lastname) ? data.firstname + " " + data.lastname : data.username)%>
+            <%= getFullName(data) %>
           </p>
         </div>
       </button>
@@ -107,17 +123,17 @@
     <div class="drawer-content">
       <div class="drawer-profile">
         <div class="drawer-avatar" id="drawer-avatar">
-          <%= (data.firstname && data.lastname ? data.firstname[0].toUpperCase() + data.lastname[0].toUpperCase() : data.username[0].toUpperCase() )%>
+          <%= getInitials(data) %>
         </div>
         <p class="drawer-name" id="drawer-name">
-          <%= (data.firstname && data.lastname ? data.firstname + " " + data.lastname : data.username) %>
+          <%= getFullName(data) %>
         </p>
         <div class="drawer-role">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span>Member</span>
         </div>
         <p class="drawer-email" id="drawer-email">
-          <%= data.email %>
+          <%= data.email || 'No email provided' %>
         </p>
       </div>
       <!-- <div class="stat-mini-grid">

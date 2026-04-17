@@ -15,6 +15,8 @@ module.exports.toSosPayload = (doc) => {
         rideId: doc.rideId,
         userId: doc.userId && doc.userId._id ? doc.userId._id : doc.userId,
         userName: doc.userId && doc.userId._id ? getSafeUserName(doc.userId) : "Unknown rider",
+        resolvedBy: doc.resolvedBy && doc.resolvedBy._id ? doc.resolvedBy._id : doc.resolvedBy || null,
+        resolvedByName: doc.resolvedBy && doc.resolvedBy._id ? getSafeUserName(doc.resolvedBy) : null,
         status: doc.status,
         createdAt: doc.createdAt,
         resolvedAt: doc.resolvedAt,

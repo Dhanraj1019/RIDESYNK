@@ -17,8 +17,9 @@ module.exports.ride=async (req, res) => {
 
         const alerts = await Sos.find({ rideId })
             .populate({ path: "userId", select: "firstname lastname username" })
+            .populate({ path: "resolvedBy", select: "firstname lastname username" })
             .sort({ createdAt: -1 })
-            .select("rideId userId status createdAt resolvedAt location");
+            .select("rideId userId resolvedBy status createdAt resolvedAt location");
 
         const active = [];
         const resolved = [];
@@ -59,12 +60,14 @@ module.exports.resolve = async (req, res) => {
         if (alert.status !== "resolved") {
             alert.status = "resolved";
             alert.resolvedAt = new Date();
+            alert.resolvedBy = req.user._id;
             await alert.save();
         }
 
         const resolved = await Sos.findById(alert._id)
             .populate({ path: "userId", select: "firstname lastname username" })
-            .select("rideId userId status createdAt resolvedAt location");
+            .populate({ path: "resolvedBy", select: "firstname lastname username" })
+            .select("rideId userId resolvedBy status createdAt resolvedAt location");
 
         const io = req.app.get("io");
         if (io) {
