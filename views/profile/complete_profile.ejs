@@ -34,48 +34,48 @@
         <input class="field-input form-control emailinput" type="email" id="email" name="data[email]" value="<%= user.email %>" read-only />
       </div>
       <!-- firstname -->
-      <div>
+      <div class="mb-3">
         <label class="field-label" for="firstname">First Name</label>
         <input class="field-input form-control" type="text" id="firstname" name="data[firstname]" placeholder="Gaurav" required />
-      </div>
-      <div class="invalid-feedback">
-        First name is required.
-      </div>
-      <div class="valid-feedback">
-        Looks good!
+        <div class="invalid-feedback">
+          First name is required.
+        </div>
+        <div class="valid-feedback">
+          Looks good!
+        </div>
       </div>
       <!-- lastname -->
-      <div>
+      <div class="mb-3">
         <label class="field-label" for="lastname">Last Name</label>
         <input class="field-input form-control" type="text" id="lastname" name="data[lastname]" placeholder="Tanwar" required />
-      </div>
-      <div class="invalid-feedback">
-        Last name is required.
-      </div>
-      <div class="valid-feedback">
-        Looks good!
+        <div class="invalid-feedback">
+          Last name is required.
+        </div>
+        <div class="valid-feedback">
+          Looks good!
+        </div>
       </div>
       <!-- Phone -->
-      <div>
+      <div class="mb-3">
         <label class="field-label" for="phone">Phone Number</label>
-        <input class="field-input form-control" pattern="[0-9]{10}" type="tel" id="phone" name="data[phonenumber]" placeholder="1234567890" required />
-      </div>
-      <div class="invalid-feedback">
-        Phone number is required.
-      </div>
-      <div class="valid-feedback">
-        Looks good!
+        <input class="field-input form-control" pattern="[0-9]{10}" minlength="10" maxlength="10" title="Phone number must be exactly 10 digits" type="tel" id="phone" name="data[phonenumber]" placeholder="1234567890" required />
+        <div class="invalid-feedback">
+          Please enter exactly 10 digits.
+        </div>
+        <div class="valid-feedback">
+          Looks good!
+        </div>
       </div>
       <!-- Bike Name -->
-      <div>
+      <div class="mb-4">
         <label class="field-label" for="bikeName">Vehical Name</label>
         <input class="field-input form-control" type="text" id="bikeName" name="data[vehical]" placeholder="e.g. Ducati Monster 821" required />
-      </div>
-      <div class="invalid-feedback">
-        Vehical name is required.
-      </div>
-      <div class="valid-feedback">
-        Looks good!
+        <div class="invalid-feedback">
+          Vehical name is required.
+        </div>
+        <div class="valid-feedback">
+          Looks good!
+        </div>
       </div>
       <button type="submit" class="btn-primary-custom" id="submit-btn">Save &amp; Continue</button>
     </form>

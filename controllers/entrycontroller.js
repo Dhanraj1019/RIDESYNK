@@ -132,7 +132,7 @@ module.exports.login=async (req, res) => {
 
   module.exports.completeprofile=async (req,res)=>{
       const {data}=req.body;
-      const t = await User.findByIdAndUpdate(req.user._id,{...data});
+      const t = await User.findByIdAndUpdate(req.user._id, {...data}, { runValidators: true });
       req.flash("success","your profile save successfully...")
       // FIX: added return
       return res.redirect("/ridesynk/home");

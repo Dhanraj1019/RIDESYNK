@@ -494,33 +494,41 @@ function toast(message, type = "info") {
 
 /* ── SOURCE & DESTINATION PINS ──────────────────────────────────────── */
 function addStaticPins() {
-  const createRouteMarker = (type, title) => {
-    const fill = type === "source" ? "#1a73e8" : "#ea4335";
-    const wrapper = document.createElement("div");
-    wrapper.className = `gm-route-pin gm-route-pin-${type}`;
-    wrapper.setAttribute("aria-label", title);
-    wrapper.setAttribute("title", title);
-    wrapper.innerHTML = `
-      <svg viewBox="0 0 28 40" aria-hidden="true" focusable="false">
-        <path
-          d="M14 0C6.268 0 0 6.268 0 14c0 9.863 12.071 21.819 13.169 22.894a1.2 1.2 0 0 0 1.662 0C15.929 35.819 28 23.863 28 14 28 6.268 21.732 0 14 0Z"
-          fill="${fill}"
-        />
-        <circle cx="14" cy="14" r="6.2" fill="#ffffff" />
-      </svg>
-    `;
-    return wrapper;
-  };
+  function createLabelMarker(label, coords, color, title) {
+    const el = document.createElement("div");
+    el.className = "marker-label";
+    el.innerText = label;
 
-  const srcEl = createRouteMarker("source", "Source");
-  new mapboxgl.Marker({ element: srcEl, anchor: "bottom" })
-    .setLngLat([srcLng, srcLat])
-    .addTo(map);
+    el.style.background = color;
+    el.style.color = "#fff";
+    el.style.padding = "6px 10px";
+    el.style.borderRadius = "50%";
+    el.style.fontWeight = "bold";
+    el.style.cursor = "pointer";
 
-  const dstEl = createRouteMarker("destination", "Destination");
-  new mapboxgl.Marker({ element: dstEl, anchor: "bottom" })
-    .setLngLat([dstLng, dstLat])
-    .addTo(map);
+    const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setText(title);
+
+    const marker = new mapboxgl.Marker(el)
+      .setLngLat(coords)
+      .setPopup(popup)
+      .addTo(map);
+
+    el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        map.flyTo({
+            center: coords,
+            zoom: 15,
+            essential: true
+        });
+        marker.togglePopup();
+    });
+  }
+
+  const srcTitle = rideData.sorce || "Source Location";
+  const dstTitle = rideData.destination || "Destination Location";
+
+  createLabelMarker("S", [srcLng, srcLat], "#16a34a", srcTitle);
+  createLabelMarker("D", [dstLng, dstLat], "#dc2626", dstTitle);
 }
 
 function restoreMapOverlaysAfterStyleChange() {
@@ -748,13 +756,28 @@ function upsertMarker(userId, lat, lng, name, isAdminUser) {
     animateMarker(userId, lat, lng);
   } else {
     const el = document.createElement("div");
-    el.className = `rider-marker ${isAdminUser ? "admin-marker" : "member-marker"}`;
+    // Class avatar-marker for the UI update
+    el.className = `avatar-marker rider-marker ${isAdminUser ? "admin-marker" : "member-marker"}`;
     el.textContent = getInitials(name);
     el.title = name;
 
+    const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setText(name);
+
     const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
       .setLngLat([lng, lat])
+      .setPopup(popup)
       .addTo(map);
+
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      map.flyTo({
+        center: [lng, lat],
+        zoom: 15,
+        essential: true
+      });
+      // Explicitly toggle the popup so it shows since we stopped propagation
+      marker.togglePopup();
+    });
 
     userMarkers.set(userId, { marker, lat, lng, name, isAdminUser });
   }
@@ -1435,6 +1458,22 @@ socket.on("connect", () => {
   socket.emit("joinRide", { rideId: rideData._id, userId: userid, name: myName });
 });
 
+socket.on("initialLocations", (members) => {
+  Object.values(members).forEach(user => {
+    const uid = user.userId.toString();
+    upsertMarker(uid, user.lat, user.lng, user.name, user.isAdmin);
+    memberLocations.set(uid, { lat: user.lat, lng: user.lng, updatedAt: Date.now() });
+    onlineUsers.add(uid);
+
+    if (!rideStarted) {
+      updateDottedPath(uid, user.lat, user.lng);
+    } else {
+      updateRouteSmooth(user);
+    }
+  });
+  renderMembersPanel();
+});
+
 socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }) => {
   const uid = userId.toString();
   upsertMarker(uid, lat, lng, name, senderIsAdmin);
@@ -1443,8 +1482,11 @@ socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }
   memberLocations.set(uid, { lat, lng, updatedAt: Date.now() });
   onlineUsers.add(uid);
 
+  // Create an object representing the user to pass to updateRouteSmooth
+  const userObj = { userId: uid, lat, lng, name, isAdmin: senderIsAdmin, fullname: name };
+
   if (!rideStarted) {
-    updateDottedPath(uid, lat, lng);
+    updateRouteSmooth(userObj);
   }
 
   // If this is admin broadcasting their position and ride started → redraw route
@@ -1460,6 +1502,80 @@ socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }
   // Always re-render members panel
   renderMembersPanel();
 });
+
+const routeTimers = {};
+
+function updateRouteSmooth(user) {
+    if (routeTimers[user.userId]) return;
+
+    routeTimers[user.userId] = setTimeout(() => {
+        drawRoute(user);
+        delete routeTimers[user.userId];
+    }, 800);
+}
+
+function drawRoute(user) {
+    const origin = [user.lng, user.lat]; // exact avatar position
+    const destination = rideData.sorceLocation.coordinates; // per prompt instructions
+
+    getRoute(origin, destination, user.userId);
+}
+
+async function getRoute(origin, destination, userId) {
+    const url =
+        `https://api.mapbox.com/directions/v5/mapbox/driving/` +
+        `${origin[0]},${origin[1]};${destination[0]},${destination[1]}` +
+        `?geometries=geojson&overview=full&steps=false&access_token=${map_token}`;
+        
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (!data.routes || !data.routes.length) return;
+        
+        const route = data.routes[0];
+        const layerId = `route-${userId}`;
+        const casingId = `route-${userId}-casing`;
+        const srcId = `route-src-${userId}`;
+        
+        const geojson = {
+          type: "Feature",
+          geometry: route.geometry
+        };
+        
+        if (map.getSource(srcId)) {
+            map.getSource(srcId).setData(geojson);
+        } else {
+            map.addSource(srcId, { type: "geojson", data: geojson });
+            
+            map.addLayer({
+                id: casingId,
+                type: "line",
+                source: srcId,
+                layout: { "line-cap": "round", "line-join": "round" },
+                paint: {
+                    "line-color": "#ffffff",
+                    "line-width": 7,
+                    "line-opacity": 0.6
+                }
+            });
+            
+            map.addLayer({
+                id: layerId,
+                type: "line",
+                source: srcId,
+                layout: { "line-cap": "round", "line-join": "round" },
+                paint: {
+                    "line-color": userId === adminUserId ? "#2563eb" : "#f59e0b",
+                    "line-width": userId === adminUserId ? 5 : 4,
+                    "line-dasharray": userId === adminUserId ? undefined : [2, 2]
+                }
+            });
+        }
+    } catch (e) {
+        /* skip */
+    }
+}
 
 socket.on("memberJoined", ({ userId, name }) => {
   // Don't notify yourself joining

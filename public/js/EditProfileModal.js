@@ -16,7 +16,7 @@
   });
 
   modal.setContent(`
-    <form action="${action}" method="POST" class="settings-edit-form" novalidate>
+    <form action="${action}" method="POST" class="settings-edit-form needs-validation" novalidate>
       <div class="mb-3">
         <label class="form-label">Username</label>
         <input type="text" class="form-control" name="update[username]" value="${profile.username || ""}" placeholder="Enter username">
@@ -35,9 +35,12 @@
       </div>
       <div class="mb-3">
         <label class="form-label">Phone</label>
-        <input type="tel" class="form-control" name="update[phonenumber]" value="${profile.phonenumber || ""}" placeholder="Enter phone number">
+        <input type="tel" class="form-control" name="update[phonenumber]" value="${profile.phonenumber || ""}" pattern="[0-9]{10}" minlength="10" maxlength="10" title="Phone number must be exactly 10 digits" placeholder="Enter exactly 10 digits" required>
+        <div class="invalid-feedback">
+          Phone number must be exactly 10 digits.
+        </div>
       </div>
-      <div class="mb-0">
+      <div class="mb-3">
         <label class="form-label">Vehical</label>
         <input type="text" class="form-control" name="update[vehical]" value="${profile.vehical || ""}" placeholder="Enter vehical">
       </div>
@@ -47,6 +50,15 @@
       </div>
     </form>
   `);
+
+  const form = modal.bodyNode.querySelector(".settings-edit-form");
+  form.addEventListener("submit", (e) => {
+    if (!form.checkValidity()) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    form.classList.add("was-validated");
+  });
 
   const cancelBtn = modal.bodyNode.querySelector(".js-modal-cancel-edit");
   cancelBtn.addEventListener("click", () => {

@@ -37,12 +37,23 @@ const rideRooms = new Map();
 // rideId → Set of userId strings currently live (have sent a location recently)
 const liveUsers = new Map();
 
+// rideId → Map of userId strings to their latest location payload
+const activeLocations = new Map();
+
 // ── Helper: get or create a ride room set ───────────────────────────────
 function getRideRoom(rideId) {
     if (!rideRooms.has(rideId)) {
         rideRooms.set(rideId, new Set());
     }
     return rideRooms.get(rideId);
+}
+
+// ── Helper: get or create an active locations map ──────────────────────
+function getActiveLocations(rideId) {
+    if (!activeLocations.has(rideId)) {
+        activeLocations.set(rideId, new Map());
+    }
+    return activeLocations.get(rideId);
 }
 
 // ── Helper: get or create a live users set ─────────────────────────────
@@ -127,6 +138,14 @@ module.exports = function registerSocketHandlers(io) {
                     });
                 }
 
+                // Send all current active locations to the newly joined user immediately (Step 1)
+                const activeLocs = getActiveLocations(rid);
+                const initialMembers = {};
+                for (const [memberId, locData] of activeLocs.entries()) {
+                    initialMembers[memberId] = locData;
+                }
+                socket.emit("initialLocations", initialMembers);
+
                 await broadcastLiveCount(io, rid);
             } catch (err) {
                 console.error("[socket] joinRide error:", err.message);
@@ -151,6 +170,15 @@ module.exports = function registerSocketHandlers(io) {
             socketUserId = uid;
             getLiveSet(rid).add(uid);
 
+            const payload = {
+                userId: uid,
+                lat: parsedLat,
+                lng: parsedLng,
+                name: escapeHtml(name),
+                isAdmin: Boolean(isAdmin)
+            };
+            getActiveLocations(rid).set(uid, payload);
+
             // Also make sure this socket is in the room (in case joinRide was missed)
             if (!joinedRides.has(rid)) {
                 socket.join(rid);
@@ -159,13 +187,7 @@ module.exports = function registerSocketHandlers(io) {
             }
 
             // Broadcast to everyone else in the room (not back to sender)
-            socket.to(rid).emit("receiveLocation", {
-                userId: uid,
-                lat: parsedLat,
-                lng: parsedLng,
-                name: escapeHtml(name),
-                isAdmin: Boolean(isAdmin)
-            });
+            socket.to(rid).emit("receiveLocation", payload);
 
             // Update live count (fire-and-forget)
             broadcastLiveCount(io, rid).catch(() => { });
@@ -203,6 +225,7 @@ module.exports = function registerSocketHandlers(io) {
 
                 // Clean up live tracking state for this ride
                 liveUsers.delete(rid);
+                activeLocations.delete(rid);
             } catch (err) {
                 console.error("[socket] rideEnded error:", err.message);
             }
