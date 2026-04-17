@@ -37,6 +37,8 @@ const sosSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+// Speed up standard queries (alerts log)
+sosSchema.index({ rideId: 1, createdAt: -1 });
 sosSchema.index({ rideId: 1, status: 1, createdAt: -1 });
 
 // One active SOS max for same user in same ride.

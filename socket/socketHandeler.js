@@ -284,25 +284,30 @@ module.exports = function registerSocketHandlers(io) {
                 socketUserMap.delete(socket.id);
             }
 
-            joinedRides.forEach(async (rid) => {
-                try {
-                    // Remove socket from room tracking
-                    const room = getRideRoom(rid);
-                    console.log("disconnected...");
-                    room.delete(socket.id);
-                    if (room.size === 0) rideRooms.delete(rid);
+            // Clean up room membership and broadcast userLeft + memberOffline
+            // Use a proper async function to iterate the Set to avoid unhandled promise rejections
+            const processCleanup = async () => {
+                for (const rid of joinedRides) {
+                    try {
+                        // Remove socket from room tracking
+                        const room = getRideRoom(rid);
+                        console.log("disconnected...");
+                        room.delete(socket.id);
+                        if (room.size === 0) rideRooms.delete(rid);
 
-                    // Remove user from live set and broadcast their departure
-                    if (socketUserId) {
-                        getLiveSet(rid).delete(socketUserId);
-                        io.to(rid).emit("userLeft", { userId: socketUserId });
+                        // Remove user from live set and broadcast their departure
+                        if (socketUserId) {
+                            getLiveSet(rid).delete(socketUserId);
+                            io.to(rid).emit("userLeft", { userId: socketUserId });
+                        }
+
+                        await broadcastLiveCount(io, rid);
+                    } catch (err) {
+                        console.error("[socket] disconnect cleanup error:", err.message);
                     }
-
-                    await broadcastLiveCount(io, rid);
-                } catch (err) {
-                    console.error("[socket] disconnect cleanup error:", err.message);
                 }
-            });
+            };
+            processCleanup();
         });
 
     }); // end io.on("connection")

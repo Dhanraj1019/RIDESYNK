@@ -25,7 +25,8 @@ function getInviteValidation(invite) {
 async function getInviteWithRide(inviteId) {
     const invite = await Invite.findOne({ inviteId })
         .populate({ path: "rideId", select: "ridename sorce destination date time totalMembers adminId" })
-        .populate({ path: "createdBy", select: "firstname lastname username" });
+        .populate({ path: "createdBy", select: "firstname lastname username" })
+        .lean();
 
     return invite;
 }
@@ -37,7 +38,7 @@ module.exports.createInvite = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid ride id" });
         }
 
-        const ride = await Ride.findById(rideId).select("_id adminId");
+        const ride = await Ride.findById(rideId).select("_id adminId").lean();
         if (!ride) {
             return res.status(404).json({ success: false, message: "Ride not found" });
         }
@@ -101,7 +102,7 @@ module.exports.openInvite = async (req, res) => {
         }
 
         const ride = invite.rideId;
-        const membership = await RideMember.findOne({ rideId: ride._id, userId: req.user._id }).select("status isActive");
+        const membership = await RideMember.findOne({ rideId: ride._id, userId: req.user._id }).select("status isActive").lean();
 
         let alreadyJoined = false;
         if (membership && membership.status === "active" && membership.isActive === true) {
@@ -144,7 +145,7 @@ module.exports.acceptInvite = async (req, res) => {
             });
         }
 
-        const ride = await Ride.findById(invite.rideId).select("_id totalMembers");
+        const ride = await Ride.findById(invite.rideId).select("_id totalMembers").lean();
         if (!ride) {
             return res.status(404).render("rides/invite.ejs", {
                 invite,
@@ -183,7 +184,7 @@ module.exports.acceptInvite = async (req, res) => {
     } catch (error) {
         if (error && error.code === 11000) {
             req.flash("success", "You already joined this ride");
-            const invite = await Invite.findOne({ inviteId: req.params.inviteId }).select("rideId");
+            const invite = await Invite.findOne({ inviteId: req.params.inviteId }).select("rideId").lean();
             if (invite && invite.rideId) {
                 return res.redirect(`/ridesynk/rideroom/${invite.rideId}`);
             }

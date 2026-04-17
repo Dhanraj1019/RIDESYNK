@@ -99,7 +99,7 @@ module.exports.login=async (req, res) => {
                        delete req.session.redirectUrl;
                        return res.redirect(redirect);
                    }
-                   return res.redirect("/ridesynk/home");
+                   return res.redirect("/ridesynk/complete-profile");
                }
            })
        }catch(error){

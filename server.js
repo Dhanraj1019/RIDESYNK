@@ -220,8 +220,17 @@ app.get('/auth/google/callback',
         delete req.session.redirectUrl;
         return res.redirect(redirect);
     }
-        // FIX: added return
-        return res.redirect('/ridesynk/home');
+    
+    // Check if the account was created in the last 30 seconds (meaning this is their first signup via Google)
+    const isNewlyCreated = req.user.createdAt && (Date.now() - new Date(req.user.createdAt).getTime() < 30000);
+
+    // Redirect to complete profile ONLY if the user is completely new (just signed up)
+    if (isNewlyCreated) {
+        return res.redirect('/ridesynk/entry/complete-profile');
+    }
+    
+    // Otherwise, normal login -> redirect to home
+    return res.redirect('/ridesynk/home');
   });
 
 

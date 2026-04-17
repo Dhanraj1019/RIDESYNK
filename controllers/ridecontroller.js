@@ -226,7 +226,7 @@ module.exports.sos = async (req, res, next) => {
             return next(new ExpressError(400, "Invalid ride id"));
         }
 
-        const data = await Ride.findById(id);
+        const data = await Ride.findById(id).lean();
         if (!data) {
             return next(new ExpressError(404, "Ride not found"));
         }
@@ -284,7 +284,7 @@ module.exports.updateTravelData = async (req, res) => {
             }
         }
 
-        const ride = await Ride.findById(rideIdFromPath).select("_id adminId sorceLocation destinationLocation");
+        const ride = await Ride.findById(rideIdFromPath).select("_id adminId sorceLocation destinationLocation").lean();
         if (!ride) {
             return res.status(404).json({ success: false, message: "Ride not found" });
         }

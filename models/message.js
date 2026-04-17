@@ -22,6 +22,9 @@ const messageSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+// Compound index to drastically speed up room loading (avoids in-memory sort)
+messageSchema.index({ rideId: 1, createdAt: 1 });
+
 module.exports = mongoose.model("Message", messageSchema);
 
 
