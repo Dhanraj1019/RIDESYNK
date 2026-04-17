@@ -6,7 +6,7 @@ module.exports.update=async (req,res,next)=>{
         const {update}=req.body;
         
         // SECURITY: Prevent Mass Assignment by explicitly whitelisting allowed fields
-        const allowedFields = ["firstname", "lastname", "email", "phonenumber", "username"];
+        const allowedFields = ["firstname", "lastname", "email", "phonenumber", "username","vehical"];
         const sanitizedUpdate = {};
         
         if (update) {

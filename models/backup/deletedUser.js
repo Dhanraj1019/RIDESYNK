@@ -1,7 +1,8 @@
-const mongoose=require("mongoose");
-const User=require("../user");
+const mongoose = require("mongoose");
 
-const deletedUserSchema = User.schema.clone();
-deletedUserSchema.set("autoIndex", false);
-deletedUserSchema.clearIndexes();
-module.exports= mongoose.model("DeleteUser",deletedUserSchema);
+// A flexible schema for backups without strict types or unique constraints
+const deletedUserSchema = new mongoose.Schema({}, { strict: false, timestamps: true });
+
+deletedUserSchema.set("autoIndex", false); // Prevents Mongoose from building any indexes automatically
+
+module.exports = mongoose.model("DeleteUser", deletedUserSchema);

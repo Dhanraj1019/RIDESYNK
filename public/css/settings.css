@@ -96,6 +96,7 @@
       font-size: .8rem;
       color: var(--muted);
       display: flex; align-items: center; gap: 6px;
+      min-width: 0;
     }
     .badge-admin {
       background: var(--brand-light);
@@ -104,6 +105,13 @@
       font-weight: 600;
       padding: 2px 8px;
       border-radius: 20px;
+      flex-shrink: 0;
+    }
+    .profile-email {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
     }
     .chevron { color: var(--muted); }
  
