@@ -55,7 +55,7 @@
  
     /* -- Inputs -- */
     .field-input {
-      width: 100%; height: 3rem;
+      width: 100%; height: 3rem; min-height: 3rem; flex-shrink: 0;
       border-radius: var(--radius);
       border: 1px solid var(--border);
       background: var(--card, #fff);
@@ -102,7 +102,7 @@
     .route-row {
       display: flex; align-items: center; gap: 0.75rem;
     }
-    .route-row .field-input { flex: 1; }
+    .route-row > .field-input { flex: 1; }
 
     /* Pin dot */
     .pin-dot {
