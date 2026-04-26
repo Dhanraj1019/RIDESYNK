@@ -16,16 +16,21 @@ module.exports.livetracking=async (req,res,next)=>{
         return next(new ExpressError(403, "Not authorized to view live tracking"));
     }
 
-    const ride = await Ride.findOne({_id:id}).lean();
+    // Run independent DB queries in parallel for performance
+    const [ride, rideMembers, messages] = await Promise.all([
+        Ride.findOne({_id:id}).lean(),
+        RideMember.find({ rideId: id, status: "active", isActive: true })
+            .populate({ path: "userId", select: "_id username firstname lastname email" })
+            .lean(),
+        Message.find({ rideId: id })
+            .sort({ createdAt: 1 })
+            .populate({ path: "senderId", select: "firstname lastname username" })
+            .lean()
+    ]);
+
     if(!ride){
         return next(new ExpressError(404,"Ride not found..."));
     }
-
-    // Populate members from ride_member collection — join with User documents
-    // userId field in ride_member.js → user fields: _id, username, firstname, lastname
-    const rideMembers = await RideMember.find({ rideId: id, status: "active", isActive: true })
-        .populate({ path: "userId", select: "_id username firstname lastname email" })
-        .lean();
 
     // Build a flat members array with user data + role — used in live_tracking.ejs
     const membersPopulated = rideMembers.map(rm => ({
@@ -44,13 +49,6 @@ module.exports.livetracking=async (req,res,next)=>{
         members: membersPopulated
     };
 
-    // message.js uses 'createdAt' (timestamps), NOT a separate 'time' field
-    // senderId ref is to User — select firstname for display
-    const messages = await Message.find({ rideId: id })
-        .sort({ createdAt: 1 })   // ← FIXED: was { time: 1 } but 'time' field does not exist in message.js
-        .populate({ path: "senderId", select: "firstname lastname username" })
-        .lean();
-
     // live_tracking.ejs expects: rideData, userid, map_token
     const userid = req.user._id.toString();
 
@@ -65,13 +63,16 @@ module.exports.addmembersform=async (req,res,next)=>{
             return next(new ExpressError(403, "Not authorized to access this ride"));
         }
         
-        const ride = await Ride.findById(id).lean();
+        // Run ride + members fetch in parallel after auth check
+        const [ride, rideroom] = await Promise.all([
+            Ride.findById(id).lean(),
+            RideMember.find({rideId:id}).populate({ path: "userId", select: "_id firstname lastname username email phonenumber" }).populate({ path: "rideId", select: "ridename sorce destination date time status adminId" }).lean()
+        ]);
+
         if (!ride || ride.adminId.toString() !== req.user._id.toString()) {
             return next(new ExpressError(403, "Only the ride admin can add members"));
         }
 
-        const rideroom=await RideMember.find({rideId:id}).populate("userId").populate("rideId").lean();
-        // console.log(rideroom)
         // FIX: added return
         return res.render("rides/add_members.ejs",{data:rideroom,id});
     } catch (e) {
@@ -90,7 +91,7 @@ module.exports.ridedetails=async (req,res,next)=>{
         const data=await Ride.findOne({_id:id}).lean();
         if (!data) return next(new ExpressError(404, "Ride not found"));
         
-        const members=await RideMember.find({rideId:id}).populate("userId").lean();
+        const members=await RideMember.find({rideId:id}).populate({ path: "userId", select: "_id firstname lastname username email phonenumber" }).lean();
         // console.log("data = ",data)
         // console.log("id = ",id)
         // console.log("members = ",members)
@@ -244,7 +245,7 @@ module.exports.sos=async (req, res, next) => {
             return next(new ExpressError(400, "Invalid ride id"));
         }
 
-        const data = await Ride.findById(id);
+        const data = await Ride.findById(id).lean();
         if (!data) {
             return next(new ExpressError(404, "Ride not found"));
         }

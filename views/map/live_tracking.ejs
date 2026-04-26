@@ -7,8 +7,9 @@
   <meta name="theme-color" content="#2563eb" />
   <title><%= rideData.ridename %> · RideSync Live</title>
 
-  <!-- Mapbox GL CSS -->
+  <!-- Mapbox GL CSS + JS (standalone page — must include directly) -->
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 
   <!-- Google Font: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -218,6 +219,7 @@
         </div>
 
         <!-- Admin-only ride action buttons -->
+         <% if(userid.toString() == rideData.adminId.toString()) { %>
         <div class="trip-actions" id="ride-action-buttons">
           <button id="btn-start-ride" aria-label="Start the ride">
             ▶ Start Ride
@@ -226,7 +228,7 @@
             ⏹ End Ride
           </button>
         </div>
-
+        <% } %>
       </div>
     </div>
 
@@ -305,10 +307,7 @@
 
   <div id="sos-alert-stack" class="sos-alert-stack" aria-live="polite" aria-label="SOS alerts"></div>
 
-  <!-- ══════════════════════════════════════════════════
-       MAPBOX GL JS (CDN — v3.3.0)
-       ══════════════════════════════════════════════════ -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <!-- Mapbox GL JS loaded above in <head> -->
 
   <!-- ══════════════════════════════════════════════════
        INJECT EJS SERVER VARIABLES INTO window.*

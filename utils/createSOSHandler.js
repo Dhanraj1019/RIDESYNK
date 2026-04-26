@@ -26,37 +26,35 @@ module.exports.createSOSHandler = async (req, res) => {
             return res.status(400).json({ success: false, message: "Location is required to send SOS" });
         }
 
-        const ride = await Ride.findById(rideId).select("_id");
+        // Run ride lookup, member validation, and all SOS checks in parallel
+        const [ride, isMember, activeSOS, sosCount, recentSOS] = await Promise.all([
+            Ride.findById(rideId).select("_id").lean(),
+            validateRideMember(rideId, req.user._id),
+            Sos.findOne({
+                rideId: rideId,
+                userId: req.user._id,
+                status: "active"
+            }).select("_id").lean(),
+            Sos.countDocuments({ rideId: rideId }),
+            Sos.findOne({
+                rideId: rideId,
+                userId: req.user._id,
+                createdAt: { $gte: new Date(Date.now() - SOS_COOLDOWN_MS) }
+            }).select("_id").lean()
+        ]);
+
         if (!ride) {
             return res.status(404).json({ success: false, message: "Failed to send SOS" });
         }
-
-        const isMember = await validateRideMember(ride._id, req.user._id);
         if (!isMember) {
             return res.status(403).json({ success: false, message: "Failed to send SOS" });
         }
-
-        const activeSOS = await Sos.findOne({
-            rideId: ride._id,
-            userId: req.user._id,
-            status: "active"
-        }).select("_id");
-
         if (activeSOS) {
             return res.status(409).json({ success: false, message: "SOS already active" });
         }
-
-        const sosCount = await Sos.countDocuments({ rideId: ride._id });
         if (sosCount >= 3) {
             return res.status(403).json({ success: false, message: "Limit reached: Maximum 3 SOS per ride allowed." });
         }
-
-        const recentSOS = await Sos.findOne({
-            rideId: ride._id,
-            userId: req.user._id,
-            createdAt: { $gte: new Date(Date.now() - SOS_COOLDOWN_MS) }
-        }).select("_id");
-
         if (recentSOS) {
             return res.status(429).json({ success: false, message: "Failed to send SOS" });
         }

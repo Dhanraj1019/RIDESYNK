@@ -13,6 +13,9 @@ router.route("/create")
 router.route("/resolve/:id")
 .post(isAuthenticated,soscontroller.resolve);
 
+router.route("/active/:rideId")
+.get(isAuthenticated,soscontroller.active);
+
 router.route("/ride/:rideId")
 .get(isAuthenticated,soscontroller.ride);
 

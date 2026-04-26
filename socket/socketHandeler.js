@@ -40,6 +40,9 @@ const liveUsers = new Map();
 // rideId → Map of userId strings to their latest location payload
 const activeLocations = new Map();
 
+// rideId → cached totalMembers count (avoids DB query on every location emit)
+const rideTotalCache = new Map();
+
 // ── Helper: get or create a ride room set ───────────────────────────────
 function getRideRoom(rideId) {
     if (!rideRooms.has(rideId)) {
@@ -65,10 +68,15 @@ function getLiveSet(rideId) {
 }
 
 // ── Helper: broadcast live count to all sockets in a ride room ─────────
+// Uses in-memory cache to avoid DB query on every location emit
 async function broadcastLiveCount(io, rideId) {
     try {
-        const ride = await Ride.findById(rideId).select("totalMembers").lean();
-        const total = ride ? (ride.totalMembers || 0) : 0;
+        let total = rideTotalCache.get(rideId);
+        if (total === undefined) {
+            const ride = await Ride.findById(rideId).select("totalMembers").lean();
+            total = ride ? (ride.totalMembers || 0) : 0;
+            rideTotalCache.set(rideId, total);
+        }
         const count = getLiveSet(rideId).size;
         io.to(rideId).emit("liveCount", { count, total });
     } catch (_) {
@@ -107,7 +115,6 @@ module.exports = function registerSocketHandlers(io) {
         // Track which rideIds this socket has joined (for cleanup on disconnect)
         const joinedRides = new Set();
         let socketUserId = null;
-        console.log("connected ...");
         // ── joinRide ────────────────────────────────────────────────────
         // Client emits: { rideId, userId, name }
         // Server: adds socket to the ride's Socket.IO room + rideRooms map
@@ -186,8 +193,9 @@ module.exports = function registerSocketHandlers(io) {
                 joinedRides.add(rid);
             }
 
-            // Broadcast to everyone else in the room (not back to sender)
-            socket.to(rid).emit("receiveLocation", payload);
+            // Broadcast to everyone in the room so every client, including the sender,
+            // renders the same route and marker state.
+            io.to(rid).emit("receiveLocation", payload);
 
             // Update live count (fire-and-forget)
             broadcastLiveCount(io, rid).catch(() => { });
@@ -196,7 +204,7 @@ module.exports = function registerSocketHandlers(io) {
         // ── rideStarted ─────────────────────────────────────────────────
         // Client emits: { rideId }   (admin only — enforced by checking adminId server-side)
         // Server: updates ride status to "active" in DB + broadcasts to room
-        socket.on("rideStarted", async ({ rideId } = {}) => {
+        async function broadcastRideStarted({ rideId, adminId, adminLocation } = {}) {
             const rid = safeId(rideId);
             if (!isValidObjectId(rid)) return;
 
@@ -205,11 +213,29 @@ module.exports = function registerSocketHandlers(io) {
                 // (ride.js enum: "active" | "upcoming" | "completed" | "canceled")
                 await Ride.findByIdAndUpdate(rid, { status: "active" });
 
-                // Broadcast to ALL sockets in the room (including sender)
+                const payload = {
+                    rideId: rid,
+                    adminId: adminId ? safeId(adminId) : undefined,
+                    adminLocation: adminLocation && Number.isFinite(Number(adminLocation.lat)) && Number.isFinite(Number(adminLocation.lng))
+                        ? { lat: Number(adminLocation.lat), lng: Number(adminLocation.lng) }
+                        : undefined
+                };
+
+                // Broadcast the new route-start event requested by the live map,
+                // and keep the existing status event for current clients.
+                io.to(rid).emit("rideStarted", payload);
                 io.to(rid).emit("rideStatusUpdate", { status: "started" });
             } catch (err) {
                 console.error("[socket] rideStarted error:", err.message);
             }
+        }
+
+        socket.on("startRide", (data = {}) => {
+            broadcastRideStarted(data);
+        });
+
+        socket.on("rideStarted", (data = {}) => {
+            broadcastRideStarted(data);
         });
 
         // ── rideEnded ───────────────────────────────────────────────────
@@ -226,6 +252,8 @@ module.exports = function registerSocketHandlers(io) {
                 // Clean up live tracking state for this ride
                 liveUsers.delete(rid);
                 activeLocations.delete(rid);
+                rideRooms.delete(rid);
+                rideTotalCache.delete(rid);
             } catch (err) {
                 console.error("[socket] rideEnded error:", err.message);
             }
@@ -240,48 +268,58 @@ module.exports = function registerSocketHandlers(io) {
         //   3. Broadcasts to ALL in room via io.to() including sender,
         //      with _id so client can set data-msg-id for dedup
         socket.on("sendMessage", async ({ rideId, userId, name, text, time } = {}) => {
-            const rid = safeId(rideId);
-            const uid = safeId(userId);
+            try {
+                const rid = safeId(rideId);
+                const uid = safeId(userId);
 
-            if (!isValidObjectId(rid) || !isValidObjectId(uid)) return;
+                if (!isValidObjectId(rid) || !isValidObjectId(uid)) return;
 
-            const rawText = String(text || "").trim();
-            if (!rawText) return;                    // block empty
-            if (rawText.length > 500) return;        // block over-length (matches client limit)
+                const rawText = String(text || "").trim();
+                if (!rawText) return;                    // block empty
+                if (rawText.length > 500) return;        // block over-length (matches client limit)
 
-            const safeText = escapeHtml(rawText);
-            const safeTime = String(time || new Date().toLocaleTimeString("en-US", {
-                hour: "2-digit", minute: "2-digit"
-            }));
-            const safeName = escapeHtml(String(name || "Rider"));
+                const safeText = escapeHtml(rawText);
+                const safeTime = String(time || new Date().toLocaleTimeString("en-US", {
+                    hour: "2-digit", minute: "2-digit"
+                }));
+                const safeName = escapeHtml(String(name || "Rider"));
 
-            // Save to DB first — chatController.saveMessage uses exact schema field names
-            // message.js: { rideId, senderId, message } — saveMessage maps text → message
-            const saved = await chatController.saveMessage({
-                rideId: rid,
-                userId: uid,
-                text: rawText  // saveMessage stores this as 'message' in DB
-            });
+                // Save to DB first — chatController.saveMessage uses exact schema field names
+                // message.js: { rideId, senderId, message } — saveMessage maps text → message
+                const saved = await chatController.saveMessage({
+                    rideId: rid,
+                    userId: uid,
+                    text: rawText  // saveMessage stores this as 'message' in DB
+                });
 
-            // Build broadcast payload — includes _id so client can set data-msg-id for dedup
-            const msgData = {
-                _id: saved ? saved._id.toString() : `tmp-${Date.now()}`,
-                userId: uid,
-                name: safeName,
-                text: safeText,
-                time: safeTime
-            };
+                // Build broadcast payload — includes _id so client can set data-msg-id for dedup
+                const msgData = {
+                    _id: saved ? saved._id.toString() : `tmp-${Date.now()}`,
+                    userId: uid,
+                    name: safeName,
+                    text: safeText,
+                    time: safeTime
+                };
 
-            // Broadcast to ALL sockets in the room INCLUDING the sender.
-            // The sender's client will receive this and check data-msg-id to skip
-            // messages it already appended optimistically.
-            io.to(rid).emit("receiveMessage", msgData);
+                // Broadcast to ALL sockets in the room INCLUDING the sender.
+                // The sender's client will receive this and check data-msg-id to skip
+                // messages it already appended optimistically.
+                io.to(rid).emit("receiveMessage", msgData);
+            } catch (err) {
+                console.error("[socket] sendMessage error:", err.message);
+            }
         });
 
         // ── sosTriggered (compat event) ────────────────────────────────
         // Client emits: { rideId, userId, name, phone, location }
         // Server re-broadcasts to full ride room.
         socket.on("sosTriggered", (data = {}) => {
+            const rid = safeId(data.rideId);
+            if (!isValidObjectId(rid)) return;
+            io.to(rid).emit("receiveSOS", data);
+        });
+
+        socket.on("sendSOS", (data = {}) => {
             const rid = safeId(data.rideId);
             if (!isValidObjectId(rid)) return;
             io.to(rid).emit("receiveSOS", data);
@@ -314,7 +352,6 @@ module.exports = function registerSocketHandlers(io) {
                     try {
                         // Remove socket from room tracking
                         const room = getRideRoom(rid);
-                        console.log("disconnected...");
                         room.delete(socket.id);
                         if (room.size === 0) rideRooms.delete(rid);
 

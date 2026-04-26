@@ -51,16 +51,21 @@ const myMember = rideData.members.find(m => m._id.toString() === userid);
 const myName = myMember ? buildDisplayName(myMember) : "You";
 
 /* ── ADMIN CHECK: adminId in ride.js ────────────────────────────────── */
-const isAdmin = rideData.adminId.toString() === userid.toString();
-const adminUserId = rideData.adminId.toString();
+const adminId = rideData.adminId.toString(); // Alias per prompt
+const isAdmin = adminId === userid.toString();
+const adminUserId = adminId;
 
 /* ── RIDE STATUS ────────────────────────────────────────────────────── */
 // status enum: "active" | "upcoming" | "completed" | "canceled" | "cancelled"
 // Server may also emit "started" — treat both "active" and "started" as ride in progress
 let rideStarted = rideData.status === "active" || rideData.status === "started";
 
+let adminLiveLocation = null;
+let isRideStarted = rideStarted;
+
 /* ── STATE ──────────────────────────────────────────────────────────── */
 const userMarkers = new Map();   // userId (string) → { marker, lat, lng, name, isAdminUser }
+const reachedSourceUsers = new Set();
 let myLat = null;
 let myLng = null;
 let followMode = true;
@@ -77,6 +82,16 @@ const onlineUsers = new Set();
 
 // Tracks which users have already fired the "reached source" notification
 const reachedNotified = new Set();
+
+// Throttled wrapper for renderMembersPanel — max 1 call per 2 seconds
+let _membersPanelTimer = null;
+function throttledRenderMembersPanel() {
+  if (_membersPanelTimer) return;
+  _membersPanelTimer = setTimeout(() => {
+    _membersPanelTimer = null;
+    renderMembersPanel();
+  }, 2000);
+}
 
 /* ── NAVIGATION STATE ───────────────────────────────────────────────── */
 let navigationSteps = [];
@@ -122,6 +137,30 @@ function removeLayerSafe(id) {
 
 function removeSourceSafe(id) {
   if (map.getSource(id)) map.removeSource(id);
+}
+
+function removeDottedPathForUser(userId) {
+  const uid = String(userId);
+  const ids = [
+    {
+      layerId: `dotted-${uid}`,
+      casingId: `dotted-${uid}-casing`,
+      sourceId: `dotted-src-${uid}`
+    },
+    {
+      layerId: `dotted-path-${uid}`,
+      casingId: `dotted-path-${uid}-casing`,
+      sourceId: `dotted-path-${uid}`
+    }
+  ];
+
+  ids.forEach(({ layerId, casingId, sourceId }) => {
+    if (map.getLayer(casingId)) map.removeLayer(casingId);
+    if (map.getLayer(layerId)) map.removeLayer(layerId);
+    if (map.getSource(sourceId)) map.removeSource(sourceId);
+  });
+
+  dottedPathThrottle.delete(uid);
 }
 
 function enhanceMapLabels() {
@@ -189,19 +228,101 @@ function showSOSPopup(data) {
   upsertSosCard(sos);
 }
 
+function handleActiveSOS(sos) {
+  if (!sos || sos.status !== "active") return;
+
+  const existingIdx = activeSOSList.findIndex(s => String(s.userId || s._id) === String(sos.userId || sos._id));
+  if (existingIdx === -1) {
+    activeSOSList.push(sos);
+  } else {
+    activeSOSList[existingIdx] = sos;
+  }
+
+  showSOSPopup(sos);
+  activateSOSMarker(sos.userId);
+
+  const isMine = String(sos.userId) === String(userid);
+  if (!isMine) {
+    isMuted = false;
+    playSOSSound();
+  }
+}
+
+async function fetchActiveSOS() {
+  try {
+    const res = await fetch(`/sos/active/${rideData._id}`, { credentials: "include" });
+    const data = await res.json();
+    const alerts = Array.isArray(data) ? data : (data.active || []);
+
+    if (alerts.length > 0) {
+      alerts.forEach(handleActiveSOS);
+    }
+  } catch (err) {
+    console.warn("[sos] Failed to fetch active SOS alerts:", err);
+  }
+}
+
 let sosAudio = null;
 let isMuted = false;
+let sosAudioUnlocked = false;
+const SOS_AUDIO_URL = "/music/sos.mp3";
+
+function getSOSAudio() {
+  if (!sosAudio) {
+    sosAudio = document.createElement("audio");
+    sosAudio.id = "sos-audio";
+    sosAudio.src = SOS_AUDIO_URL;
+    sosAudio.loop = true;
+    sosAudio.preload = "auto";
+    sosAudio.setAttribute("playsinline", "true");
+    sosAudio.style.display = "none";
+    sosAudio.addEventListener("error", () => {
+      console.warn("SOS audio failed to load:", SOS_AUDIO_URL);
+      toast("SOS sound file could not load.", "error");
+    });
+    document.body.appendChild(sosAudio);
+  }
+  return sosAudio;
+}
+
+async function unlockSOSAudio() {
+  const audio = getSOSAudio();
+  try {
+    isMuted = false;
+    audio.muted = false;
+    audio.volume = 1;
+    await audio.play();
+    sosAudioUnlocked = true;
+    if (!hasAudibleActiveSOS()) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    return true;
+  } catch (err) {
+    audio.muted = false;
+    console.warn("SOS audio unlock blocked:", err);
+    return false;
+  }
+}
+
+function hasAudibleActiveSOS() {
+  return activeSOSList.some((sos) => {
+    return sos && sos.status === "active" && String(sos.userId) !== String(userid);
+  });
+}
 
 function playSOSSound() {
   if (isMuted) return;
-  
-  if (!sosAudio) {
-    sosAudio = new Audio("/music/sos.mp3");
-    sosAudio.loop = true;
-  }
-  
-  if (sosAudio.paused) {
-    sosAudio.play().catch(err => console.warn("Audio play blocked by browser:", err));
+
+  const audio = getSOSAudio();
+  audio.muted = false;
+  audio.volume = 1;
+
+  if (audio.paused) {
+    audio.play().catch(err => {
+      console.warn("Audio play blocked by browser:", err);
+      showEnableAlertsButton();
+    });
   }
 }
 
@@ -217,6 +338,7 @@ function muteSOSAlert() {
   stopSOSSound();
 }
 window.muteSOSAlert = muteSOSAlert; // Export for onclick handler in HTML
+window.stopSOS = muteSOSAlert;
 
 function focusMap(location) {
   if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return;
@@ -310,18 +432,7 @@ async function triggerSOS() {
     }
 
     const rideId = rideData._id;
-    const userId = userid;
-    const name = myName;
-    const phone = (myMember && myMember.phonenumber) ? String(myMember.phonenumber) : "";
     const location = { lat: myLat, lng: myLng };
-
-    socket.emit("sosTriggered", {
-      rideId,
-      userId,
-      name,
-      phone,
-      location
-    });
 
     const res = await fetch("/sos/create", {
       method: "POST",
@@ -459,6 +570,47 @@ function setupSosUi() {
   if (cancelBtn) {
     cancelBtn.addEventListener("click", cancelSosCountdown);
   }
+}
+
+function setupSosAlertUnlock() {
+  showEnableAlertsButton();
+}
+
+function showEnableAlertsButton() {
+  if (sosAudioUnlocked) return;
+  if (document.getElementById("enable-sos-alerts")) return;
+
+  const btn = document.createElement("button");
+  btn.id = "enable-sos-alerts";
+  btn.type = "button";
+  btn.textContent = "Enable Alerts";
+  btn.style.cssText = [
+    "position:fixed",
+    "right:16px",
+    "bottom:96px",
+    "z-index:1200",
+    "border:0",
+    "border-radius:8px",
+    "padding:10px 14px",
+    "background:#dc2626",
+    "color:#fff",
+    "font-weight:700",
+    "box-shadow:0 10px 25px rgba(15,23,42,.2)",
+    "cursor:pointer"
+  ].join(";");
+
+  btn.addEventListener("click", async () => {
+    const unlocked = await unlockSOSAudio();
+    if (unlocked) {
+      btn.remove();
+      toast("SOS alerts enabled.", "success");
+      if (hasAudibleActiveSOS()) {
+        playSOSSound();
+      }
+    }
+  });
+
+  document.body.appendChild(btn);
 }
 
 /* ── HAVERSINE FORMULA ──────────────────────────────────────────────── */
@@ -604,26 +756,26 @@ const dottedPathThrottle = new Map();  // userId → last fetch timestamp
 const DOTTED_THROTTLE_MS = 5000;       // max 1 API call per 5s per user
 
 async function updateDottedPath(userId, lat, lng) {
-  if (rideStarted) return;
-
   const dist = haversine(lat, lng, srcLat, srcLng);
-  const layerId = `dotted-${userId}`;
+  const uid = String(userId);
+  const layerId = `dotted-path-${uid}`;
   const casingId = `${layerId}-casing`;
-  const srcId = `dotted-src-${userId}`;
+  const srcId = layerId;
 
   // Within 80m of source — remove path, rider has arrived
-  if (dist < 80) {
-    if (map.getLayer(casingId)) map.removeLayer(casingId);
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
-    if (map.getSource(srcId)) map.removeSource(srcId);
+  if (dist <= 80) {
+    reachedSourceUsers.add(uid);
+    const markerData = userMarkers.get(uid);
+    if (markerData) markerData.hasReachedSource = true;
+    removeDottedPathForUser(uid);
 
     // Fire "reached source" notification once per user
-    if (!reachedNotified.has(userId)) {
-      reachedNotified.add(userId);
-      const reachedMember = rideData.members.find(m => m._id.toString() === userId);
+    if (!reachedNotified.has(uid)) {
+      reachedNotified.add(uid);
+      const reachedMember = rideData.members.find(m => m._id.toString() === uid);
       const reachedName = reachedMember ? buildDisplayName(reachedMember) : 'A rider';
 
-      if (userId === userid) {
+      if (uid === userid) {
         showNotif({ type: 'reached', title: 'You reached the source! 🎉', sub: rideData.sorce, name: reachedName });
       } else {
         showNotif({ type: 'reached', title: `${reachedName} reached the source`, sub: rideData.sorce, name: reachedName });
@@ -633,14 +785,19 @@ async function updateDottedPath(userId, lat, lng) {
     return;
   }
 
+  if (rideStarted || reachedSourceUsers.has(uid)) {
+    removeDottedPathForUser(uid);
+    return;
+  }
+
   // Throttle: only fetch Directions API every DOTTED_THROTTLE_MS
   const now = Date.now();
-  const lastFetch = dottedPathThrottle.get(userId) || 0;
+  const lastFetch = dottedPathThrottle.get(uid) || 0;
   if (now - lastFetch < DOTTED_THROTTLE_MS) {
     // Between API fetches — source exists, skip
     return;
   }
-  dottedPathThrottle.set(userId, now);
+  dottedPathThrottle.set(uid, now);
 
   try {
     // Fetch real road route from Mapbox Directions API
@@ -653,8 +810,8 @@ async function updateDottedPath(userId, lat, lng) {
     const data = await res.json();
 
     if (!data.routes || data.routes.length === 0) {
-      console.warn(`[RideSynk] No road route for ${userId} — drawing fallback`);
-      drawFallbackLine(userId, lat, lng, layerId, casingId, srcId);
+      console.warn(`[RideSynk] No road route for ${uid} - drawing fallback`);
+      drawFallbackLine(uid, lat, lng, layerId, casingId, srcId);
       return;
     }
 
@@ -697,11 +854,11 @@ async function updateDottedPath(userId, lat, lng) {
         }
       });
 
-      console.log(`[RideSynk] Road route drawn for userId: ${userId}`);
+      console.log(`[RideSynk] Road route drawn for userId: ${uid}`);
     }
   } catch (err) {
-    console.error(`[RideSynk] updateDottedPath fetch error for ${userId}:`, err);
-    drawFallbackLine(userId, lat, lng, layerId, casingId, srcId);
+    console.error(`[RideSynk] updateDottedPath fetch error for ${uid}:`, err);
+    drawFallbackLine(uid, lat, lng, layerId, casingId, srcId);
   }
 }
 
@@ -737,13 +894,7 @@ function drawFallbackLine(userId, lat, lng, layerId, casingId, srcId) {
 function clearAllDottedPaths() {
   const allIds = new Set([...userMarkers.keys(), userid]);
   allIds.forEach(uid => {
-    const layerId = `dotted-${uid}`;
-    const casingId = `${layerId}-casing`;
-    const srcId = `dotted-src-${uid}`;
-
-    if (map.getLayer(casingId)) map.removeLayer(casingId);
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
-    if (map.getSource(srcId)) map.removeSource(srcId);
+    removeDottedPathForUser(uid);
   });
 
   dottedPathThrottle.clear();
@@ -940,10 +1091,34 @@ async function drawLiveRoute(currentLat, currentLng) {
 
   const requestId = ++activeRouteRequestId;
 
+  let coordinates = [
+    rideData.sorceLocation.coordinates,   // [lng, lat]
+    [currentLng, currentLat],             // adminLiveLocation [lng, lat]
+    rideData.destinationLocation.coordinates
+  ];
+
+  const distFromSrc = haversine(currentLat, currentLng, srcLat, srcLng);
+  // EDGE CASE
+  if (distFromSrc < 50) {
+    coordinates = [
+      [currentLng, currentLat],
+      rideData.destinationLocation.coordinates
+    ];
+  }
+
+  // DEBUG (MANDATORY)
+  console.log("FINAL ORDER:", coordinates);
+
+  const coordsString = coordinates
+    .map(coord => coord.join(","))
+    .join(";");
+
+  // FORCE WAYPOINT ORDER (CRITICAL FIX)
+  const wpParam = coordinates.length === 3 ? "&waypoints=0;1;2" : "&waypoints=0;1";
+
   const url =
-    `https://api.mapbox.com/directions/v5/mapbox/driving/` +
-    `${srcLng},${srcLat};${currentLng},${currentLat};${dstLng},${dstLat}` +
-    `?geometries=geojson&steps=true&overview=full&access_token=${map_token}`;
+    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}` +
+    `?overview=full&geometries=geojson&steps=true${wpParam}&access_token=${map_token}`;
 
   try {
     const res = await fetch(url);
@@ -951,37 +1126,49 @@ async function drawLiveRoute(currentLat, currentLng) {
     if (requestId !== activeRouteRequestId) return;
     if (!data.routes || !data.routes.length) return;
 
-    const route = data.routes[0];
+    const routeGeoJSON = data.routes[0].geometry;
+    
     // Keep navigation steps aligned to the rider's own current route.
-    // When using multiple waypoints (src -> admin -> dst), legs[1] is the leg from admin to dst
-    navigationSteps = route.legs[1] && Array.isArray(route.legs[1].steps)
-      ? route.legs[1].steps
-      : [];
-    if (!navigationSteps.length && route.legs[0]) {
-      navigationSteps = route.legs[0].steps || [];
+    // Be flexible based on how many legs were returned
+    let steps = [];
+    if (distFromSrc < 50 && data.routes[0].legs[0]) {
+      steps = data.routes[0].legs[0].steps || [];
+    } else if (distFromSrc >= 50 && data.routes[0].legs[1]) {
+      steps = data.routes[0].legs[1].steps || [];
+    } else if (data.routes[0].legs[0]) {
+      steps = data.routes[0].legs[0].steps || [];
     }
-    if (!navigationSteps.length) return;
-
-    currentStepIndex = findNearestNavigationStepIndex(navigationSteps, currentLat, currentLng);
+    
+    navigationSteps = steps;
+    // Don't return early if no steps, just keep going
+    if (navigationSteps.length) {
+      currentStepIndex = findNearestNavigationStepIndex(navigationSteps, currentLat, currentLng);
+    }
     lastRouteOrigin = { lat: currentLat, lng: currentLng };
 
-    removeLayerSafe("live-route");
-    removeSourceSafe("live-route");
+    // REMOVE OLD ROUTE BEFORE DRAW
+    if (map.getLayer("route")) {
+      map.removeLayer("route");
+    }
+    if (map.getSource("route")) {
+      map.removeSource("route");
+    }
+    removeLayerSafe("static-route");
+    removeSourceSafe("static-route");
 
-    map.addSource("live-route", {
+    map.addSource("route", {
       type: "geojson",
-      data: { type: "Feature", geometry: route.geometry }
+      data: { type: "Feature", geometry: routeGeoJSON }
     });
 
     map.addLayer({
-      id: "live-route",
+      id: "route",
       type: "line",
-      source: "live-route",
-      layout: { "line-cap": "round", "line-join": "round" },
+      source: "route",
+      layout: { "line-join": "round", "line-cap": "round" },
       paint: {
         "line-color": "#2563eb",
-        "line-width": 6,
-        "line-opacity": 0.9
+        "line-width": 5
       }
     });
   } catch (e) {
@@ -995,18 +1182,34 @@ function scheduleRouteRedraw(lat, lng) {
   if (lastRouteOrigin) {
     const movedDistance = haversine(lat, lng, lastRouteOrigin.lat, lastRouteOrigin.lng);
     if (movedDistance < 20) return;
+  } else if (routeRedrawTimer) {
+    // If we haven't drawn the route yet (lastRouteOrigin is null)
+    // but the timer is already running, don't keep resetting it.
+    return;
   }
 
   clearTimeout(routeRedrawTimer);
-  routeRedrawTimer = setTimeout(() => drawLiveRoute(lat, lng), 3000);
+  routeRedrawTimer = setTimeout(() => {
+    routeRedrawTimer = null;
+    drawLiveRoute(lat, lng);
+  }, 3000);
 }
+
+function updateDynamicRoute(adminLocation) {
+  if (!adminLocation) return;
+  const lat = Number(adminLocation.lat);
+  const lng = Number(adminLocation.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  drawLiveRoute(lat, lng);
+}
+
+let isRideModeActivated = false;
 
 /* ── ACTIVATE RIDE MODE ─────────────────────────────────────────────── */
 function activateRideMode() {
   // Guard — safe to call multiple times (socket events, page-load sync, etc.)
-  if (rideStarted) {
+  if (isRideModeActivated) {
     // Even if guard fires, guarantee nav panel is visible
-    // (handles the case where rideStarted was set but nav never shown)
     const np = document.getElementById("nav-panel");
     if (np && np.style.display !== "flex") {
       np.style.display = "flex";
@@ -1015,7 +1218,9 @@ function activateRideMode() {
     }
     return;
   }
+  isRideModeActivated = true;
   rideStarted = true;
+  isRideStarted = true;
   console.log('[RideSynk] activateRideMode: ACTIVATING');
 
   // Show nav panel — multiple methods for reliability
@@ -1035,8 +1240,7 @@ function activateRideMode() {
   if (btnEnd) { btnEnd.style.display = "flex"; }
 
   clearAllDottedPaths();
-  removeLayerSafe("static-route");
-  removeSourceSafe("static-route");
+  // We will leave the static-route alone here, and only remove it specifically when drawLiveRoute succeeds.
 
   // Update status badge in trip plan
   updateStatusBadge("active");
@@ -1422,9 +1626,7 @@ function startGeolocation() {
       memberLocations.set(userid, { lat, lng, updatedAt: Date.now() });
       onlineUsers.add(userid);
 
-      if (!rideStarted) {
-        updateDottedPath(userid, lat, lng);
-      }
+      updateDottedPath(userid, lat, lng);
 
       if (followMode && followTarget === userid) {
         centerOnUser(lat, lng);
@@ -1437,8 +1639,8 @@ function startGeolocation() {
         }
       }
 
-      // Always re-render members panel (not just when visible)
-      renderMembersPanel();
+      // Always re-render members panel (throttled to prevent DOM thrashing)
+      throttledRenderMembersPanel();
     },
     err => {
       const msgs = {
@@ -1465,13 +1667,15 @@ socket.on("initialLocations", (members) => {
     memberLocations.set(uid, { lat: user.lat, lng: user.lng, updatedAt: Date.now() });
     onlineUsers.add(uid);
 
-    if (!rideStarted) {
-      updateDottedPath(uid, user.lat, user.lng);
-    } else {
-      updateRouteSmooth(user);
+    updateDottedPath(uid, user.lat, user.lng);
+    if (uid === adminUserId || user.isAdmin) {
+      adminLiveLocation = { lat: user.lat, lng: user.lng };
+      if (isRideStarted) {
+        updateDynamicRoute(adminLiveLocation);
+      }
     }
   });
-  renderMembersPanel();
+  throttledRenderMembersPanel();
 });
 
 socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }) => {
@@ -1481,17 +1685,14 @@ socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }
   // Track location for members panel distances
   memberLocations.set(uid, { lat, lng, updatedAt: Date.now() });
   onlineUsers.add(uid);
-
-  // Create an object representing the user to pass to updateRouteSmooth
-  const userObj = { userId: uid, lat, lng, name, isAdmin: senderIsAdmin, fullname: name };
-
-  if (!rideStarted) {
-    updateRouteSmooth(userObj);
-  }
+  updateDottedPath(uid, lat, lng);
 
   // If this is admin broadcasting their position and ride started → redraw route
-  if (uid === adminUserId && rideStarted) {
-    scheduleRouteRedraw(lat, lng);
+  if (uid === adminUserId || senderIsAdmin) {
+    adminLiveLocation = { lat, lng };
+    if (isRideStarted) {
+      scheduleRouteRedraw(lat, lng);
+    }
   }
 
   // Follow admin if we're a member
@@ -1500,89 +1701,17 @@ socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }
   }
 
   // Always re-render members panel
-  renderMembersPanel();
+  throttledRenderMembersPanel();
 });
 
-const routeTimers = {};
-
-function updateRouteSmooth(user) {
-    if (routeTimers[user.userId]) return;
-
-    routeTimers[user.userId] = setTimeout(() => {
-        drawRoute(user);
-        delete routeTimers[user.userId];
-    }, 800);
-}
-
-function drawRoute(user) {
-    const origin = [user.lng, user.lat]; // exact avatar position
-    const destination = rideData.sorceLocation.coordinates; // per prompt instructions
-
-    getRoute(origin, destination, user.userId);
-}
-
-async function getRoute(origin, destination, userId) {
-    const url =
-        `https://api.mapbox.com/directions/v5/mapbox/driving/` +
-        `${origin[0]},${origin[1]};${destination[0]},${destination[1]}` +
-        `?geometries=geojson&overview=full&steps=false&access_token=${map_token}`;
-        
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        
-        if (!data.routes || !data.routes.length) return;
-        
-        const route = data.routes[0];
-        const layerId = `route-${userId}`;
-        const casingId = `route-${userId}-casing`;
-        const srcId = `route-src-${userId}`;
-        
-        const geojson = {
-          type: "Feature",
-          geometry: route.geometry
-        };
-        
-        if (map.getSource(srcId)) {
-            map.getSource(srcId).setData(geojson);
-        } else {
-            map.addSource(srcId, { type: "geojson", data: geojson });
-            
-            map.addLayer({
-                id: casingId,
-                type: "line",
-                source: srcId,
-                layout: { "line-cap": "round", "line-join": "round" },
-                paint: {
-                    "line-color": "#ffffff",
-                    "line-width": 7,
-                    "line-opacity": 0.6
-                }
-            });
-            
-            map.addLayer({
-                id: layerId,
-                type: "line",
-                source: srcId,
-                layout: { "line-cap": "round", "line-join": "round" },
-                paint: {
-                    "line-color": userId === adminUserId ? "#2563eb" : "#f59e0b",
-                    "line-width": userId === adminUserId ? 5 : 4,
-                    "line-dasharray": userId === adminUserId ? undefined : [2, 2]
-                }
-            });
-        }
-    } catch (e) {
-        /* skip */
-    }
-}
+// We removed updateRouteSmooth and getRoute so the map does not draw weird individual dotted lines.
 
 socket.on("memberJoined", ({ userId, name }) => {
   // Don't notify yourself joining
   if (userId === userid) return;
 
   onlineUsers.add(userId);
-  renderMembersPanel();
+  throttledRenderMembersPanel();
 
   showNotif({
     type: 'join',
@@ -1590,6 +1719,18 @@ socket.on("memberJoined", ({ userId, name }) => {
     sub: 'Now tracking their location',
     name
   });
+});
+
+socket.on("rideStarted", (data = {}) => {
+  isRideStarted = true;
+  rideStarted = true;
+  rideData.status = "active";
+  waitForMapThenActivate();
+
+  const loc = data.adminLocation || adminLiveLocation;
+  if (loc) {
+    updateDynamicRoute(loc);
+  }
 });
 
 socket.on("rideStatusUpdate", ({ status }) => {
@@ -1658,17 +1799,11 @@ socket.on("userLeft", ({ userId }) => {
   if (data) {
     data.marker.remove();
     userMarkers.delete(uid);
-    // Clean up casing + main dotted layer + source
-    const layerId = `dotted-${uid}`;
-    const casingId = `${layerId}-casing`;
-    const srcId = `dotted-src-${uid}`;
-    if (map.getLayer(casingId)) map.removeLayer(casingId);
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
-    if (map.getSource(srcId)) map.removeSource(srcId);
+    removeDottedPathForUser(uid);
   }
   // Mark offline in onlineUsers (keeps memberLocations for last-known distance)
   onlineUsers.delete(uid);
-  renderMembersPanel();
+  throttledRenderMembersPanel();
 });
 
 socket.on("liveCount", ({ count, total }) => {
@@ -1679,59 +1814,37 @@ socket.on("liveCount", ({ count, total }) => {
 socket.on("memberOffline", ({ userId }) => {
   if (!userId) return;
   onlineUsers.delete(userId.toString());
-  renderMembersPanel();
+  throttledRenderMembersPanel();
   // Silent — no toast for offline to avoid spam
 });
 
 socket.on("sos:triggered", ({ sos }) => {
   if (!sos || sos.status !== "active") return;
-  
-  // Track in active SOS list if needed
-  const existingIdx = activeSOSList.findIndex(s => String(s.userId || s._id) === String(sos.userId || sos._id));
-  if (existingIdx === -1) {
-    activeSOSList.push(sos);
-  }
-
-  upsertSosCard(sos);
+  handleActiveSOS(sos);
   toast("SOS alert received.", "warn");
-  
-  const isMine = String(sos.userId) === String(userid);
-
-  // Trigger visual and auditory alerts (Mute sound for the creator for safety)
-  if (!isMine) {
-    isMuted = false;
-    playSOSSound();
-    if (sos.location) {
-      focusMap(sos.location);
-    }
+  if (String(sos.userId) !== String(userid) && sos.location) {
+    focusMap(sos.location);
   }
-  
-  activateSOSMarker(sos.userId);
 });
 
 socket.on("sos:created", ({ sos }) => {
   if (!sos || sos.status !== "active") return;
-  
-  // Track in active SOS list if needed
-  const existingIdx = activeSOSList.findIndex(s => String(s.userId || s._id) === String(sos.userId || sos._id));
-  if (existingIdx === -1) {
-    activeSOSList.push(sos);
+  handleActiveSOS(sos);
+  if (String(sos.userId) !== String(userid) && sos.location) {
+    focusMap(sos.location);
   }
+});
 
-  upsertSosCard(sos);
-  
-  const isMine = String(sos.userId) === String(userid);
-
-  // Trigger visual and auditory alerts (Mute sound for the creator for safety)
-  if (!isMine) {
-    isMuted = false;
-    playSOSSound();
-    if (sos.location) {
-      focusMap(sos.location);
-    }
-  }
-  
-  activateSOSMarker(sos.userId);
+socket.on("receiveSOS", (data = {}) => {
+  const sos = data.sos || {
+    _id: data._id || data.userId,
+    userId: data.userId,
+    name: data.name,
+    phone: data.phone,
+    location: data.location,
+    status: data.status || "active"
+  };
+  handleActiveSOS(sos);
 });
 
 function removeSOS(userId) {
@@ -1908,6 +2021,15 @@ map.on("load", () => {
   // Draw pre-ride route if not already started
   if (!rideStarted) {
     drawStaticRoute();
+  } else if (rideStarted) {
+      if (isAdmin && Number.isFinite(myLat) && Number.isFinite(myLng)) {
+          drawLiveRoute(myLat, myLng);
+      } else if (userMarkers.has(adminUserId)) {
+          const adminLoc = userMarkers.get(adminUserId);
+          drawLiveRoute(adminLoc.lat, adminLoc.lng);
+      } else {
+          drawStaticRoute(); // Fallback until admin location arrives
+      }
   }
 
   startGeolocation();
@@ -1989,8 +2111,17 @@ document.getElementById("btn-speaker").addEventListener("click", () => {
 const btnStartRide = document.getElementById("btn-start-ride");
 if (btnStartRide && isAdmin) {
   btnStartRide.addEventListener("click", () => {
-    socket.emit("rideStarted", { rideId: rideData._id });
+    const adminLocation = Number.isFinite(myLat) && Number.isFinite(myLng)
+      ? { lat: myLat, lng: myLng }
+      : null;
+
+    socket.emit("startRide", {
+      rideId: rideData._id,
+      adminId: userid,
+      adminLocation
+    });
     activateRideMode();
+    if (adminLocation) updateDynamicRoute(adminLocation);
   });
 }
 
@@ -2020,6 +2151,15 @@ setupBottomSheetDrag();
 setupSearch();
 renderMembersPanel();
 setupSosUi();
+setupSosAlertUnlock();
+fetchActiveSOS();
+
+window.addEventListener("load", fetchActiveSOS);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    fetchActiveSOS();
+  }
+});
 
 /* ── UPDATE TRIP PLAN TAB UI ────────────────────────────────────────── */
 updateStatusBadge(rideData.status);

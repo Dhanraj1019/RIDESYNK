@@ -284,12 +284,14 @@ module.exports.updateTravelData = async (req, res) => {
             }
         }
 
-        const ride = await Ride.findById(rideIdFromPath).select("_id adminId sorceLocation destinationLocation").lean();
+        // Run ride lookup and member validation in parallel
+        const [ride, isMember] = await Promise.all([
+            Ride.findById(rideIdFromPath).select("_id adminId sorceLocation destinationLocation").lean(),
+            validateRideMember(rideIdFromPath, req.user._id)
+        ]);
         if (!ride) {
             return res.status(404).json({ success: false, message: "Ride not found" });
         }
-
-        const isMember = await validateRideMember(ride._id, req.user._id);
         if (!isMember) {
             return res.status(403).json({ success: false, message: "Not allowed" });
         }

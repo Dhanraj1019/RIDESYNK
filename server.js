@@ -8,6 +8,7 @@ const map_token=process.env.MAP_TOKEN;
 require("./cron/deleteUsers");
 require("./cron/ridecompeletion.js");
 const express=require("express");
+const compression=require("compression");
 const app=express();
 const http=require("http");
 const {Server}=require("socket.io");
@@ -54,7 +55,7 @@ const chatrouter=require("./routes/chatRoutes.js");
 //===============================db sessions flash=======================================
 
 const dburl=process.env.MONGO_URL;
-secretkey=process.env.SECRET_KEY;
+const secretkey=process.env.SECRET_KEY;
 
 const store=MongoStore.create({
     mongoUrl:dburl,
@@ -90,7 +91,7 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const user = await User.findById(id);
+    const user = await User.findById(id).lean();
     done(null, user);
   } catch (err) {
     done(err, null);
@@ -149,9 +150,10 @@ app.use((req,res,next)=>{
 
 //=========================data recive ejsmat path public view folder joining===================================
 
+app.use(compression());
 app.use(express.urlencoded({extended: true}));
 app.use(express.json())
-app.use(express.static(path.join(__dirname,"public")))
+app.use(express.static(path.join(__dirname,"public"), { maxAge: '1d' }))
 app.set("view engine","ejs");
 app.set("views",path.join(__dirname,"views"));
 app.engine("ejs",ejsMate);
@@ -160,8 +162,9 @@ app.use(methodOverride("_method"));
 
 //============================================server start===============================================
 
-server.listen(8080,()=>{
-    console.log("we are listing on render !")
+const PORT = process.env.PORT || 8080;
+server.listen(PORT,()=>{
+    console.log(`server listening on port ${PORT}`);
 })
 
 //=====================socket start==========================
@@ -175,7 +178,12 @@ app.set("io", io);
 //=====================moongodb connection function==================================
 
 async function main(){
-    await mongoose.connect(dburl);
+    await mongoose.connect(dburl, {
+        maxPoolSize: 10,
+        minPoolSize: 2,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000
+    });
 }
 
 main().then((res)=>{
@@ -186,6 +194,30 @@ main().then((res)=>{
 
 
 //======================================express routes start here=============================================
+
+//=====================health check for Render + keep-alive==========================
+app.get("/health",(req,res)=>{
+    return res.status(200).json({status:"ok"});
+})
+
+//=====================self-ping keep-alive (prevents Render cold starts)==========================
+// Render free tier sleeps after 15 min of inactivity.
+// This pings /health every 14 min to keep the server awake.
+// Only runs in production (RENDER_EXTERNAL_URL is auto-set by Render).
+if (process.env.RENDER_EXTERNAL_URL) {
+    const KEEP_ALIVE_URL = `${process.env.RENDER_EXTERNAL_URL}/health`;
+    const INTERVAL_MS = 14 * 60 * 1000; // 14 minutes
+
+    setInterval(async () => {
+        try {
+            await fetch(KEEP_ALIVE_URL);
+        } catch (_) {
+            // Non-critical — don't crash if the ping fails
+        }
+    }, INTERVAL_MS);
+
+    console.log(`[keep-alive] pinging ${KEEP_ALIVE_URL} every 14 min`);
+}
 
 app.get("/",(req,res)=>{
     return res.redirect("/ridesynk/entry/login")
