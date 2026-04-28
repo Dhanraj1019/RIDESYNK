@@ -257,7 +257,7 @@ module.exports = function registerSocketHandlers(io) {
             try {
                 // Update ride status in DB — field name is "status", value "active"
                 // (ride.js enum: "active" | "upcoming" | "completed" | "canceled")
-                await Ride.findByIdAndUpdate(rid, { status: "active" });
+                await Ride.findByIdAndUpdate(rid, { status: "active", rideStarted: true });
 
                 // Track ride as started for late joiners
                 rideStatusMap.set(rid, { started: true, status: "active" });

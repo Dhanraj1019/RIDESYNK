@@ -59,7 +59,7 @@ const adminUserId = adminId;
 /* ── RIDE STATUS ────────────────────────────────────────────────────── */
 // status enum: "active" | "upcoming" | "completed" | "canceled" | "cancelled"
 // Server may also emit "started" — treat both "active" and "started" as ride in progress
-let rideStarted = rideData.status === "active" || rideData.status === "started";
+let rideStarted = window.rideStarted !== undefined ? window.rideStarted : (rideData.status === "active" || rideData.status === "started");
 
 let adminLiveLocation = null;
 let isRideStarted = rideStarted;
@@ -652,6 +652,51 @@ function restoreMapOverlaysAfterStyleChange() {
   }
 
   drawStaticRoute();
+}
+
+async function renderStaticRoute() {
+    const source = rideData.sorceLocation.coordinates;
+    const destination = rideData.destinationLocation.coordinates;
+
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/` +
+        `${source[0]},${source[1]};${destination[0]},${destination[1]}` +
+        `?geometries=geojson&access_token=${map_token}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const routeGeoJSON = {
+        type: "Feature",
+        geometry: data.routes[0].geometry
+    };
+
+    renderRoute(routeGeoJSON);
+}
+
+function renderRoute(routeGeoJSON) {
+    removeLayerSafe("static-route");
+    removeSourceSafe("static-route");
+
+    map.addSource("static-route", {
+        type: "geojson",
+        data: routeGeoJSON
+    });
+
+    map.addLayer({
+        id: "static-route",
+        type: "line",
+        source: "static-route",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+            "line-color": "#2563eb",
+            "line-width": 5,
+            "line-opacity": 0.8
+        }
+    });
+
+    const bounds = new mapboxgl.LngLatBounds();
+    routeGeoJSON.geometry.coordinates.forEach(c => bounds.extend(c));
+    map.fitBounds(bounds, { padding: 80, duration: 1000 });
 }
 
 /* ── STATIC ROUTE (before ride starts) ─────────────────────────────── */
@@ -1593,6 +1638,8 @@ function setupTabs() {
   });
 }
 
+let locationAlertShown = false;
+
 /* ── GEOLOCATION WATCH ──────────────────────────────────────────────── */
 function startGeolocation() {
   if (!navigator.geolocation) {
@@ -1600,8 +1647,28 @@ function startGeolocation() {
     return;
   }
 
+  // Pre-check for initial prompt to ensure fast failure/success
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      // Success! We can reset the alert shown flag.
+      locationAlertShown = false; 
+      initWatch();
+    },
+    (err) => {
+      // Execute the watch anyway so it recovers when they turn GPS back on
+      initWatch(); 
+    },
+    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+  );
+}
+
+function initWatch() {
+  if (watchId !== null) return; // Prevent double watching
+
   watchId = navigator.geolocation.watchPosition(
     pos => {
+      // If we get a position cleanly, reset the alert flag so we can warn again if it drops
+      locationAlertShown = false;
       const { latitude: lat, longitude: lng } = pos.coords;
       myLat = lat;
       myLng = lng;
@@ -1644,14 +1711,26 @@ function startGeolocation() {
       throttledRenderMembersPanel();
     },
     err => {
-      const msgs = {
-        1: "Location access denied. Enable GPS to track.",
-        2: "GPS signal unavailable.",
-        3: "GPS request timed out."
-      };
-      toast(msgs[err.code] || "Location error.", "error");
+      let errorMsg = "Location error.";
+      if (err.code === 1) {
+        errorMsg = "Location access denied. Please allow location permissions in your browser settings.";
+      } else if (err.code === 2) {
+        errorMsg = "Device location is turned off. Please turn on your device's Location / GPS to continue.";
+        if (!locationAlertShown) {
+           alert("Your browser has location permission, but your device GPS is turned OFF. Please turn on Location setting in your device menu to use live tracking.");
+           locationAlertShown = true;
+        }
+      } else if (err.code === 3) {
+        errorMsg = "GPS request timed out. Please ensure your location services are enabled.";
+        if (!locationAlertShown) {
+           alert("Getting your location timed out. Please make sure your device GPS is turned ON and you have clear view of the sky.");
+           locationAlertShown = true;
+        }
+      }
+
+      toast(errorMsg, "error");
     },
-    { enableHighAccuracy: true, maximumAge: 2000 }
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
   );
 }
 
@@ -1725,10 +1804,14 @@ socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }
 });
 
 socket.on("adminLocationUpdated", ({ lat, lng }) => {
-  adminLiveLocation = { lat, lng };
-  if (shouldUpdateRoute(lat, lng)) {
-    updateDynamicRoute(lat, lng);
-  }
+
+    // ❗ ONLY UPDATE AFTER RIDE START
+    if (!rideStarted) return;
+
+    adminLiveLocation = { lat, lng };
+    if (shouldUpdateRoute(lat, lng)) {
+        updateDynamicRoute(lat, lng);
+    }
 });
 
 // We removed updateRouteSmooth and getRoute so the map does not draw weird individual dotted lines.
@@ -2060,18 +2143,10 @@ map.on("load", () => {
   enhanceMapLabels();
   addStaticPins();
 
-  // Draw pre-ride route if not already started
   if (!rideStarted) {
-    drawStaticRoute();
-  } else if (rideStarted) {
-      if (isAdmin && Number.isFinite(myLat) && Number.isFinite(myLng)) {
-          drawLiveRoute(myLat, myLng);
-      } else if (userMarkers.has(adminUserId)) {
-          const adminLoc = userMarkers.get(adminUserId);
-          drawLiveRoute(adminLoc.lat, adminLoc.lng);
-      } else {
-          drawStaticRoute(); // Fallback until admin location arrives
-      }
+      renderStaticRoute();
+  } else {
+      // wait for admin location updates
   }
 
   startGeolocation();

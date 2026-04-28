@@ -326,6 +326,8 @@
     //   adminId, ridename, sorce, sorceLocation{type,coordinates:[lng,lat]},
     //   destination, destinationLocation, status, totalMembers, distance, date, time
     // members is populated array of user objects from ride_member join (server populates)
+    const rideStarted = <%= rideData.rideStarted ? 'true' : 'false' %>;
+    window.rideStarted = rideStarted;
     <% 
       const safeRideData = {
         _id:                 rideData._id,
@@ -336,6 +338,7 @@
         destination:         rideData.destination,
         destinationLocation: rideData.destinationLocation,
         status:              rideData.status,
+        rideStarted:         rideData.rideStarted,
         totalMembers:        rideData.totalMembers,
         distance:            rideData.distance,
         date:                rideData.date,

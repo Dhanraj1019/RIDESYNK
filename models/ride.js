@@ -84,6 +84,11 @@ const rideSchema = new mongoose.Schema({
     index: true
   },
 
+  rideStarted: {
+    type: Boolean,
+    default: false
+  },
+
   // 🗑️ Soft delete support
   isDeleted: {
     type: Boolean,
