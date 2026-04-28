@@ -40,6 +40,7 @@ const User=require("./models/user.js");
 const registerSocketHandlers = require("./socket/socketHandeler.js");
 const {isAuthenticated}=require("./midelwear.js");
 const ExpressError=require("./utils/ExpressError.js");
+const { cacheMiddleware } = require("./utils/cache.js");
 
 //========================routes requirement==============================
 
@@ -152,8 +153,12 @@ app.use((req,res,next)=>{
 
 app.use(compression());
 app.use(express.urlencoded({extended: true}));
-app.use(express.json())
-app.use(express.static(path.join(__dirname,"public"), { maxAge: '1d' }))
+app.use(express.json());
+app.get("/health", cacheMiddleware, (req, res) => {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    return res.status(200).json({status:"ok"});
+})
+app.use(express.static(path.join(__dirname,"public"), { maxAge: 7 * 24 * 60 * 60 * 1000 }))
 app.set("view engine","ejs");
 app.set("views",path.join(__dirname,"views"));
 app.engine("ejs",ejsMate);
@@ -195,11 +200,6 @@ main().then((res)=>{
 
 //======================================express routes start here=============================================
 
-//=====================health check for Render + keep-alive==========================
-app.get("/health",(req,res)=>{
-    return res.status(200).json({status:"ok"});
-})
-
 //=====================self-ping keep-alive (prevents Render cold starts)==========================
 // Render free tier sleeps after 15 min of inactivity.
 // This pings /health every 14 min to keep the server awake.
@@ -219,8 +219,9 @@ if (process.env.RENDER_EXTERNAL_URL) {
     console.log(`[keep-alive] pinging ${KEEP_ALIVE_URL} every 14 min`);
 }
 
-app.get("/",(req,res)=>{
-    return res.redirect("/ridesynk/entry/login")
+app.get("/", cacheMiddleware, (req, res) => {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    return res.redirect("/ridesynk/entry/login");
 })
 
 app.use("/ridesynk/entry",entryrouter);

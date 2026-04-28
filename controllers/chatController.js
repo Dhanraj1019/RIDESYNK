@@ -62,9 +62,10 @@ module.exports.getChatHistory = async (req, res) => {
         // Populate senderId with user.js fields (firstname, lastname, username — no 'name', no 'avatar')
         const messages = await Message.find({ rideId })
             .populate({ path: "senderId", select: "firstname lastname username" })
-            .sort({ createdAt: 1 })   // oldest first so chat renders in order
+            .sort({ createdAt: -1 })
             .limit(50)
             .lean();
+        messages.reverse();
 
         // Shape records into the payload the frontend appendMessage() expects:
         // { _id, userId, name, text, time }

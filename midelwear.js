@@ -1,4 +1,5 @@
 module.exports.isAuthenticated=(req,res,next)=>{
+    res.setHeader('Cache-Control', 'private, no-store');
     if(!req.isAuthenticated()){
         console.log("user not authanticated ...!")
         req.flash("error","you shuld login before...")

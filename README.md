@@ -89,7 +89,6 @@ node server.js
 ```
 The application will be available at `http://localhost:8080`.
 
----
 
 ## 🔑 Environment Variables
 
@@ -158,4 +157,3 @@ To ensure production-level reliability, RideSync specifically catches and handle
 
 <div align="center">
   <i>Built with ❤️ by a passionate engineer</i>
-</div>

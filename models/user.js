@@ -82,6 +82,9 @@ const userSchema = new mongoose.Schema({
 
 userSchema.index({ "travel.updatedAt": -1 });
 
+// compound index to drastically improve cron job performance (deleteUsers.js)
+userSchema.index({ status: 1, deleteAfter: 1 });
+
 // adds hash + salt (password handled securely)
 userSchema.plugin(passportLocalMongoose);
 

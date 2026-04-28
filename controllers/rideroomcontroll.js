@@ -17,14 +17,10 @@ module.exports.livetracking=async (req,res,next)=>{
     }
 
     // Run independent DB queries in parallel for performance
-    const [ride, rideMembers, messages] = await Promise.all([
+    const [ride, rideMembers] = await Promise.all([
         Ride.findOne({_id:id}).lean(),
         RideMember.find({ rideId: id, status: "active", isActive: true })
             .populate({ path: "userId", select: "_id username firstname lastname email" })
-            .lean(),
-        Message.find({ rideId: id })
-            .sort({ createdAt: 1 })
-            .populate({ path: "senderId", select: "firstname lastname username" })
             .lean()
     ]);
 
@@ -52,7 +48,7 @@ module.exports.livetracking=async (req,res,next)=>{
     // live_tracking.ejs expects: rideData, userid, map_token
     const userid = req.user._id.toString();
 
-    return res.render("map/live_tracking.ejs", { rideData, map_token, userid, messages });
+    return res.render("map/live_tracking.ejs", { rideData, map_token, userid, messages: [] });
 }
 
 module.exports.addmembersform=async (req,res,next)=>{

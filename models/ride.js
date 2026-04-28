@@ -101,4 +101,8 @@ const rideSchema = new mongoose.Schema({
 rideSchema.index({ sorceLocation:       "2dsphere" });
 rideSchema.index({ destinationLocation: "2dsphere" });
 
+// ── COMPOUND INDEXES ───────────────────────────────────────────────────
+// Speeds up the cron job in /cron/ridecompeletion.js (auto-completes old rides)
+rideSchema.index({ status: 1, date: 1 });
+
 module.exports = mongoose.model("Ride", rideSchema);

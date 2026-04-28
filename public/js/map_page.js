@@ -20,6 +20,7 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 import socket from "/js/socket.js";
+const DEBUG_LOG = false;
 
 /* ── READ EJS-INJECTED GLOBALS ──────────────────────────────────────── */
 const map_token = window.__MAP_TOKEN__;
@@ -72,7 +73,7 @@ let followMode = true;
 let followTarget = isAdmin ? userid : adminUserId;
 let watchId = null;
 let lastEmitTime = 0;
-const EMIT_THROTTLE = 1500;
+const EMIT_THROTTLE = 3000;
 
 // Tracks latest confirmed location per user (for members panel distances)
 const memberLocations = new Map();  // userId → { lat, lng, updatedAt }
@@ -104,6 +105,8 @@ let routeRedrawTimer = null;
 let voiceEnabled = true;
 let lastRouteOrigin = null;
 let activeRouteRequestId = 0;
+let lastDynamicRouteUpdateTime = 0;
+let lastDynamicRouteUpdateLocation = null;
 let isSatelliteView = false;
 let uiState = "idle"; // idle | countdown | active (UI-only state machine)
 let countdownTimer = null;
@@ -154,11 +157,20 @@ function removeDottedPathForUser(userId) {
     }
   ];
 
-  ids.forEach(({ layerId, casingId, sourceId }) => {
-    if (map.getLayer(casingId)) map.removeLayer(casingId);
-    if (map.getLayer(layerId)) map.removeLayer(layerId);
-    if (map.getSource(sourceId)) map.removeSource(sourceId);
+  // Fade out opacity for smooth removal
+  ids.forEach(({ layerId, casingId }) => {
+    try { if (map.getLayer(layerId)) map.setPaintProperty(layerId, 'line-opacity', 0); } catch(_) {}
+    try { if (map.getLayer(casingId)) map.setPaintProperty(casingId, 'line-opacity', 0); } catch(_) {}
   });
+
+  // Remove layers/sources after fade completes (300ms default Mapbox transition)
+  setTimeout(() => {
+    ids.forEach(({ layerId, casingId, sourceId }) => {
+      if (map.getLayer(casingId)) map.removeLayer(casingId);
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+    });
+  }, 300);
 
   dottedPathThrottle.delete(uid);
 }
@@ -264,7 +276,7 @@ async function fetchActiveSOS() {
 
 let sosAudio = null;
 let isMuted = false;
-let sosAudioUnlocked = false;
+let sosSoundPlayed = false;
 const SOS_AUDIO_URL = "/music/sos.mp3";
 
 function getSOSAudio() {
@@ -285,26 +297,6 @@ function getSOSAudio() {
   return sosAudio;
 }
 
-async function unlockSOSAudio() {
-  const audio = getSOSAudio();
-  try {
-    isMuted = false;
-    audio.muted = false;
-    audio.volume = 1;
-    await audio.play();
-    sosAudioUnlocked = true;
-    if (!hasAudibleActiveSOS()) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-    return true;
-  } catch (err) {
-    audio.muted = false;
-    console.warn("SOS audio unlock blocked:", err);
-    return false;
-  }
-}
-
 function hasAudibleActiveSOS() {
   return activeSOSList.some((sos) => {
     return sos && sos.status === "active" && String(sos.userId) !== String(userid);
@@ -313,6 +305,7 @@ function hasAudibleActiveSOS() {
 
 function playSOSSound() {
   if (isMuted) return;
+  if (sosSoundPlayed) return;
 
   const audio = getSOSAudio();
   audio.muted = false;
@@ -321,9 +314,9 @@ function playSOSSound() {
   if (audio.paused) {
     audio.play().catch(err => {
       console.warn("Audio play blocked by browser:", err);
-      showEnableAlertsButton();
     });
   }
+  sosSoundPlayed = true;
 }
 
 function stopSOSSound() {
@@ -331,6 +324,7 @@ function stopSOSSound() {
     sosAudio.pause();
     sosAudio.currentTime = 0;
   }
+  sosSoundPlayed = false;
 }
 
 function muteSOSAlert() {
@@ -572,46 +566,6 @@ function setupSosUi() {
   }
 }
 
-function setupSosAlertUnlock() {
-  showEnableAlertsButton();
-}
-
-function showEnableAlertsButton() {
-  if (sosAudioUnlocked) return;
-  if (document.getElementById("enable-sos-alerts")) return;
-
-  const btn = document.createElement("button");
-  btn.id = "enable-sos-alerts";
-  btn.type = "button";
-  btn.textContent = "Enable Alerts";
-  btn.style.cssText = [
-    "position:fixed",
-    "right:16px",
-    "bottom:96px",
-    "z-index:1200",
-    "border:0",
-    "border-radius:8px",
-    "padding:10px 14px",
-    "background:#dc2626",
-    "color:#fff",
-    "font-weight:700",
-    "box-shadow:0 10px 25px rgba(15,23,42,.2)",
-    "cursor:pointer"
-  ].join(";");
-
-  btn.addEventListener("click", async () => {
-    const unlocked = await unlockSOSAudio();
-    if (unlocked) {
-      btn.remove();
-      toast("SOS alerts enabled.", "success");
-      if (hasAudibleActiveSOS()) {
-        playSOSSound();
-      }
-    }
-  });
-
-  document.body.appendChild(btn);
-}
 
 /* ── HAVERSINE FORMULA ──────────────────────────────────────────────── */
 function haversine(lat1, lng1, lat2, lng2) {
@@ -753,7 +707,7 @@ async function drawStaticRoute() {
 // Also creates a white casing layer 'dotted-{userId}-casing' for visibility.
 
 const dottedPathThrottle = new Map();  // userId → last fetch timestamp
-const DOTTED_THROTTLE_MS = 5000;       // max 1 API call per 5s per user
+const DOTTED_THROTTLE_MS = 15000;      // max 1 API call per 15s per user
 
 async function updateDottedPath(userId, lat, lng) {
   const dist = haversine(lat, lng, srcLat, srcLng);
@@ -765,6 +719,7 @@ async function updateDottedPath(userId, lat, lng) {
   // Within 80m of source — remove path, rider has arrived
   if (dist <= 80) {
     reachedSourceUsers.add(uid);
+    if (DEBUG_LOG) console.log("USER REACHED SOURCE", uid);
     const markerData = userMarkers.get(uid);
     if (markerData) markerData.hasReachedSource = true;
     removeDottedPathForUser(uid);
@@ -1106,8 +1061,7 @@ async function drawLiveRoute(currentLat, currentLng) {
     ];
   }
 
-  // DEBUG (MANDATORY)
-  console.log("FINAL ORDER:", coordinates);
+  if (DEBUG_LOG) console.log("FINAL ORDER:", coordinates);
 
   const coordsString = coordinates
     .map(coord => coord.join(","))
@@ -1146,31 +1100,28 @@ async function drawLiveRoute(currentLat, currentLng) {
     }
     lastRouteOrigin = { lat: currentLat, lng: currentLng };
 
-    // REMOVE OLD ROUTE BEFORE DRAW
-    if (map.getLayer("route")) {
-      map.removeLayer("route");
-    }
-    if (map.getSource("route")) {
-      map.removeSource("route");
-    }
+    // Remove static route on first live route draw
     removeLayerSafe("static-route");
     removeSourceSafe("static-route");
 
-    map.addSource("route", {
-      type: "geojson",
-      data: { type: "Feature", geometry: routeGeoJSON }
-    });
-
-    map.addLayer({
-      id: "route",
-      type: "line",
-      source: "route",
-      layout: { "line-join": "round", "line-cap": "round" },
-      paint: {
-        "line-color": "#2563eb",
-        "line-width": 5
-      }
-    });
+    // Update existing route source data (prevents flicker) or create new
+    const routeData = { type: "Feature", geometry: routeGeoJSON };
+    if (map.getSource("route")) {
+      map.getSource("route").setData(routeData);
+    } else {
+      map.addSource("route", { type: "geojson", data: routeData });
+      map.addLayer({
+        id: "route",
+        type: "line",
+        source: "route",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: {
+          "line-color": "#2563eb",
+          "line-width": 5
+        }
+      });
+    }
+    if (DEBUG_LOG) console.log("ROUTE RECALCULATED");
   } catch (e) {
     toast("Failed to update route.", "error");
   }
@@ -1181,7 +1132,7 @@ function scheduleRouteRedraw(lat, lng) {
 
   if (lastRouteOrigin) {
     const movedDistance = haversine(lat, lng, lastRouteOrigin.lat, lastRouteOrigin.lng);
-    if (movedDistance < 20) return;
+    if (movedDistance < 50) return;
   } else if (routeRedrawTimer) {
     // If we haven't drawn the route yet (lastRouteOrigin is null)
     // but the timer is already running, don't keep resetting it.
@@ -1192,14 +1143,47 @@ function scheduleRouteRedraw(lat, lng) {
   routeRedrawTimer = setTimeout(() => {
     routeRedrawTimer = null;
     drawLiveRoute(lat, lng);
-  }, 3000);
+  }, 5000);
 }
 
-function updateDynamicRoute(adminLocation) {
-  if (!adminLocation) return;
-  const lat = Number(adminLocation.lat);
-  const lng = Number(adminLocation.lng);
+function shouldUpdateRoute(lat, lng) {
+  const adminLat = Number(lat);
+  const adminLng = Number(lng);
+  if (!Number.isFinite(adminLat) || !Number.isFinite(adminLng)) return false;
+
+  const now = Date.now();
+  if (now - lastDynamicRouteUpdateTime < 2000) return false;
+
+  if (lastDynamicRouteUpdateLocation) {
+    const movedDistance = haversine(
+      adminLat,
+      adminLng,
+      lastDynamicRouteUpdateLocation.lat,
+      lastDynamicRouteUpdateLocation.lng
+    );
+    if (movedDistance < 20) return false;
+  }
+
+  lastDynamicRouteUpdateTime = now;
+  lastDynamicRouteUpdateLocation = { lat: adminLat, lng: adminLng };
+  return true;
+}
+
+function updateDynamicRoute(adminLocationOrLat, adminLng) {
+  const lat = Number(
+    typeof adminLocationOrLat === "object" && adminLocationOrLat !== null
+      ? adminLocationOrLat.lat
+      : adminLocationOrLat
+  );
+  const lng = Number(
+    typeof adminLocationOrLat === "object" && adminLocationOrLat !== null
+      ? adminLocationOrLat.lng
+      : adminLng
+  );
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+  clearTimeout(routeRedrawTimer);
+  routeRedrawTimer = null;
   drawLiveRoute(lat, lng);
 }
 
@@ -1308,16 +1292,32 @@ function renderMembersPanel() {
     let status = 'waiting';
 
     if (loc) {
-      distanceM = haversine(loc.lat, loc.lng, srcLat, srcLng);
-      if (distanceM < 80) {
-        distanceText = '\u2705 Reached source';
-        status = 'reached';
-      } else if (distanceM < 1000) {
-        distanceText = `${Math.round(distanceM)} m from source`;
-        status = 'onway';
+      const distToSrc = haversine(loc.lat, loc.lng, srcLat, srcLng);
+      const hasReached = distToSrc < 80 || reachedSourceUsers.has(uid);
+
+      if (hasReached || rideStarted) {
+        // After reaching source OR ride started -> show distance to destination
+        const distToDst = haversine(loc.lat, loc.lng, dstLat, dstLng);
+        distanceM = distToDst;
+        status = hasReached ? 'reached' : 'onway';
+
+        if (distToDst < 100) {
+          distanceText = '\ud83c\udfc1 Near destination';
+        } else if (distToDst < 1000) {
+          distanceText = `${Math.round(distToDst)} m to destination`;
+        } else {
+          distanceText = `${(distToDst / 1000).toFixed(1)} km to destination`;
+        }
+        if (DEBUG_LOG) console.log('DISTANCE SWITCHED TO DESTINATION', uid);
       } else {
-        distanceText = `${(distanceM / 1000).toFixed(1)} km from source`;
+        // Before reaching source -> show distance to source
+        distanceM = distToSrc;
         status = 'onway';
+        if (distToSrc < 1000) {
+          distanceText = `${Math.round(distToSrc)} m from source`;
+        } else {
+          distanceText = `${(distToSrc / 1000).toFixed(1)} km from source`;
+        }
       }
     }
 
@@ -1618,6 +1618,7 @@ function startGeolocation() {
         name: myName,
         isAdmin: isAdmin
       });
+      if (DEBUG_LOG) console.log("LOCATION SENT", { lat, lng, rideId: rideData._id });
 
       // Update own marker on map
       upsertMarker(userid, lat, lng, myName, isAdmin);
@@ -1678,9 +1679,28 @@ socket.on("initialLocations", (members) => {
   throttledRenderMembersPanel();
 });
 
+socket.on("rideState", ({ started, status, adminLocation } = {}) => {
+  if (DEBUG_LOG) console.log('[RideSynk] rideState received:', { started, status, adminLocation });
+  if (started || status === 'active' || status === 'started') {
+    rideData.status = 'active';
+    isRideStarted = true;
+    rideStarted = true;
+    waitForMapThenActivate();
+    if (adminLocation) {
+      adminLiveLocation = adminLocation;
+      updateDynamicRoute(adminLocation);
+    }
+  } else if (status === 'completed' || status === 'ended') {
+    rideData.status = 'completed';
+    showRideEndedOverlay();
+  }
+});
+
 socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }) => {
   const uid = userId.toString();
   upsertMarker(uid, lat, lng, name, senderIsAdmin);
+  if (DEBUG_LOG) console.log("LOCATION RECEIVED", { userId: uid, lat, lng });
+  if (DEBUG_LOG) console.log("MAP UPDATED", uid);
 
   // Track location for members panel distances
   memberLocations.set(uid, { lat, lng, updatedAt: Date.now() });
@@ -1702,6 +1722,13 @@ socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }
 
   // Always re-render members panel
   throttledRenderMembersPanel();
+});
+
+socket.on("adminLocationUpdated", ({ lat, lng }) => {
+  adminLiveLocation = { lat, lng };
+  if (shouldUpdateRoute(lat, lng)) {
+    updateDynamicRoute(lat, lng);
+  }
 });
 
 // We removed updateRouteSmooth and getRoute so the map does not draw weird individual dotted lines.
@@ -1847,11 +1874,23 @@ socket.on("receiveSOS", (data = {}) => {
   handleActiveSOS(sos);
 });
 
+socket.on("activeSOS", (data) => {
+  const alerts = Array.isArray(data) ? data : [data && data.sos ? data.sos : data];
+  alerts
+    .filter(sos => sos && sos.status === "active")
+    .forEach(handleActiveSOS);
+});
+
 function removeSOS(userId) {
   if (!userId) return;
+  const cleanId = String(userId);
+  const existingSos = activeSOSList.find(sos => String(sos.userId || sos._id) === cleanId);
   
   // 1. Remove UI notification card (hide popup)
   removeSosCard(userId);
+  if (existingSos && existingSos._id) {
+    removeSosCard(existingSos._id);
+  }
   
   // 2. Extinguish the red blinking avatar (remove blinking class)
   deactivateSOSMarker(userId);
@@ -1860,10 +1899,9 @@ function removeSOS(userId) {
   clearSosCountdown();
   uiState = "idle";
   setSosUiState("idle");
-  window.sosSoundPlayed = false;
+  sosSoundPlayed = false;
   
   // 4. Unload from array cache
-  const cleanId = String(userId);
   const idx = activeSOSList.findIndex(sos => String(sos.userId || sos._id) === cleanId);
   if (idx !== -1) {
     activeSOSList.splice(idx, 1);
@@ -1887,6 +1925,10 @@ socket.on("sos:resolved", ({ sosId, sos }) => {
   if (sos && sos.status === "resolved") {
     toast("SOS resolved.", "success");
   }
+});
+
+socket.on("sosResolved", ({ userId } = {}) => {
+  removeSOS(userId);
 });
 
 /* ── NOTIFICATION SYSTEM ─────────────────────────────────────────────────── */
@@ -2151,7 +2193,6 @@ setupBottomSheetDrag();
 setupSearch();
 renderMembersPanel();
 setupSosUi();
-setupSosAlertUnlock();
 fetchActiveSOS();
 
 window.addEventListener("load", fetchActiveSOS);

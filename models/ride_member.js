@@ -59,5 +59,7 @@ const rideMemberSchema = new mongoose.Schema({
 
 // prevent duplicate join
 rideMemberSchema.index({ rideId: 1, userId: 1 }, { unique: true });
+rideMemberSchema.index({ userId: 1, status: 1, isActive: 1 });
+rideMemberSchema.index({ rideId: 1, status: 1, isActive: 1 });
 
 module.exports = mongoose.model("RideMember", rideMemberSchema);
