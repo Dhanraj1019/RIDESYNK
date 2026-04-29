@@ -25,7 +25,7 @@ module.exports.cancelride = async (req, res, next) => {
             return res.redirect(req.get("Referrer") || `/ridesynk/${req.user._id.toString()}/rides`);
         }
 
-        const ride = await Ride.findById(rideId);
+        const ride = await Ride.findById(rideId).select("_id adminId status");
         if (!ride) {
             req.flash("error", "ride not found");
             return res.redirect(req.get("Referrer") || `/ridesynk/${req.user._id.toString()}/rides`);
@@ -99,7 +99,7 @@ module.exports.updatelocation = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid location coordinates" });
         }
 
-        const ride = await Ride.findById(rideId);
+        const ride = await Ride.findById(rideId).select("_id adminId sorce destination date time sorceLocation destinationLocation");
         if (!ride) {
             return res.status(404).json({ success: false, message: "Ride not found" });
         }
@@ -226,7 +226,9 @@ module.exports.sos = async (req, res, next) => {
             return next(new ExpressError(400, "Invalid ride id"));
         }
 
-        const data = await Ride.findById(id).lean();
+        const data = await Ride.findById(id)
+            .select("_id adminId ridename date time sorce destination status sorceLocation destinationLocation")
+            .lean();
         if (!data) {
             return next(new ExpressError(404, "Ride not found"));
         }

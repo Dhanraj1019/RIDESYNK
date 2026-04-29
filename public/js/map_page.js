@@ -159,8 +159,8 @@ function removeDottedPathForUser(userId) {
 
   // Fade out opacity for smooth removal
   ids.forEach(({ layerId, casingId }) => {
-    try { if (map.getLayer(layerId)) map.setPaintProperty(layerId, 'line-opacity', 0); } catch(_) {}
-    try { if (map.getLayer(casingId)) map.setPaintProperty(casingId, 'line-opacity', 0); } catch(_) {}
+    try { if (map.getLayer(layerId)) map.setPaintProperty(layerId, 'line-opacity', 0); } catch (_) { }
+    try { if (map.getLayer(casingId)) map.setPaintProperty(casingId, 'line-opacity', 0); } catch (_) { }
   });
 
   // Remove layers/sources after fade completes (300ms default Mapbox transition)
@@ -457,7 +457,7 @@ function startSosCountdown() {
   const { countdown } = sosElements();
   countdownValue = 5;
   if (countdown) countdown.textContent = String(countdownValue);
-  
+
   const timestampEl = document.getElementById("sos-timestamp");
   if (timestampEl) {
     const formatted = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -620,13 +620,13 @@ function addStaticPins() {
       .addTo(map);
 
     el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        map.flyTo({
-            center: coords,
-            zoom: 15,
-            essential: true
-        });
-        marker.togglePopup();
+      e.stopPropagation();
+      map.flyTo({
+        center: coords,
+        zoom: 15,
+        essential: true
+      });
+      marker.togglePopup();
     });
   }
 
@@ -655,48 +655,48 @@ function restoreMapOverlaysAfterStyleChange() {
 }
 
 async function renderStaticRoute() {
-    const source = rideData.sorceLocation.coordinates;
-    const destination = rideData.destinationLocation.coordinates;
+  const source = rideData.sorceLocation.coordinates;
+  const destination = rideData.destinationLocation.coordinates;
 
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/` +
-        `${source[0]},${source[1]};${destination[0]},${destination[1]}` +
-        `?geometries=geojson&access_token=${map_token}`;
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/` +
+    `${source[0]},${source[1]};${destination[0]},${destination[1]}` +
+    `?geometries=geojson&access_token=${map_token}`;
 
-    const res = await fetch(url);
-    const data = await res.json();
+  const res = await fetch(url);
+  const data = await res.json();
 
-    const routeGeoJSON = {
-        type: "Feature",
-        geometry: data.routes[0].geometry
-    };
+  const routeGeoJSON = {
+    type: "Feature",
+    geometry: data.routes[0].geometry
+  };
 
-    renderRoute(routeGeoJSON);
+  renderRoute(routeGeoJSON);
 }
 
 function renderRoute(routeGeoJSON) {
-    removeLayerSafe("static-route");
-    removeSourceSafe("static-route");
+  removeLayerSafe("static-route");
+  removeSourceSafe("static-route");
 
-    map.addSource("static-route", {
-        type: "geojson",
-        data: routeGeoJSON
-    });
+  map.addSource("static-route", {
+    type: "geojson",
+    data: routeGeoJSON
+  });
 
-    map.addLayer({
-        id: "static-route",
-        type: "line",
-        source: "static-route",
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: {
-            "line-color": "#2563eb",
-            "line-width": 5,
-            "line-opacity": 0.8
-        }
-    });
+  map.addLayer({
+    id: "static-route",
+    type: "line",
+    source: "static-route",
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": "#2563eb",
+      "line-width": 5,
+      "line-opacity": 0.8
+    }
+  });
 
-    const bounds = new mapboxgl.LngLatBounds();
-    routeGeoJSON.geometry.coordinates.forEach(c => bounds.extend(c));
-    map.fitBounds(bounds, { padding: 80, duration: 1000 });
+  const bounds = new mapboxgl.LngLatBounds();
+  routeGeoJSON.geometry.coordinates.forEach(c => bounds.extend(c));
+  map.fitBounds(bounds, { padding: 80, duration: 1000 });
 }
 
 /* ── STATIC ROUTE (before ride starts) ─────────────────────────────── */
@@ -1126,7 +1126,7 @@ async function drawLiveRoute(currentLat, currentLng) {
     if (!data.routes || !data.routes.length) return;
 
     const routeGeoJSON = data.routes[0].geometry;
-    
+
     // Keep navigation steps aligned to the rider's own current route.
     // Be flexible based on how many legs were returned
     let steps = [];
@@ -1137,7 +1137,7 @@ async function drawLiveRoute(currentLat, currentLng) {
     } else if (data.routes[0].legs[0]) {
       steps = data.routes[0].legs[0].steps || [];
     }
-    
+
     navigationSteps = steps;
     // Don't return early if no steps, just keep going
     if (navigationSteps.length) {
@@ -1275,7 +1275,7 @@ function activateRideMode() {
   updateStatusBadge("active");
 
   toast("Ride started! Navigation enabled.", "success");
-  
+
   // Show SOS button when ride starts or when entering an already running ride
   const btnSos = document.getElementById("btn-sos") || document.querySelector(".sos-ctrl-btn");
   if (btnSos) {
@@ -1651,12 +1651,12 @@ function startGeolocation() {
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       // Success! We can reset the alert shown flag.
-      locationAlertShown = false; 
+      locationAlertShown = false;
       initWatch();
     },
     (err) => {
       // Execute the watch anyway so it recovers when they turn GPS back on
-      initWatch(); 
+      initWatch();
     },
     { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
   );
@@ -1717,14 +1717,14 @@ function initWatch() {
       } else if (err.code === 2) {
         errorMsg = "Device location is turned off. Please turn on your device's Location / GPS to continue.";
         if (!locationAlertShown) {
-           alert("Your browser has location permission, but your device GPS is turned OFF. Please turn on Location setting in your device menu to use live tracking.");
-           locationAlertShown = true;
+          alert("Your browser has location permission, but your device GPS is turned OFF. Please turn on Location setting in your device menu to use live tracking.");
+          locationAlertShown = true;
         }
       } else if (err.code === 3) {
         errorMsg = "GPS request timed out. Please ensure your location services are enabled.";
         if (!locationAlertShown) {
-           alert("Getting your location timed out. Please make sure your device GPS is turned ON and you have clear view of the sky.");
-           locationAlertShown = true;
+          alert("Getting your location timed out. Please make sure your device GPS is turned ON and you have clear view of the sky.");
+          locationAlertShown = true;
         }
       }
 
@@ -1805,13 +1805,13 @@ socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }
 
 socket.on("adminLocationUpdated", ({ lat, lng }) => {
 
-    // ❗ ONLY UPDATE AFTER RIDE START
-    if (!rideStarted) return;
+  // ❗ ONLY UPDATE AFTER RIDE START
+  if (!rideStarted) return;
 
-    adminLiveLocation = { lat, lng };
-    if (shouldUpdateRoute(lat, lng)) {
-        updateDynamicRoute(lat, lng);
-    }
+  adminLiveLocation = { lat, lng };
+  if (shouldUpdateRoute(lat, lng)) {
+    updateDynamicRoute(lat, lng);
+  }
 });
 
 // We removed updateRouteSmooth and getRoute so the map does not draw weird individual dotted lines.
@@ -1968,13 +1968,13 @@ function removeSOS(userId) {
   if (!userId) return;
   const cleanId = String(userId);
   const existingSos = activeSOSList.find(sos => String(sos.userId || sos._id) === cleanId);
-  
+
   // 1. Remove UI notification card (hide popup)
   removeSosCard(userId);
   if (existingSos && existingSos._id) {
     removeSosCard(existingSos._id);
   }
-  
+
   // 2. Extinguish the red blinking avatar (remove blinking class)
   deactivateSOSMarker(userId);
 
@@ -1983,13 +1983,13 @@ function removeSOS(userId) {
   uiState = "idle";
   setSosUiState("idle");
   sosSoundPlayed = false;
-  
+
   // 4. Unload from array cache
   const idx = activeSOSList.findIndex(sos => String(sos.userId || sos._id) === cleanId);
   if (idx !== -1) {
     activeSOSList.splice(idx, 1);
   }
-  
+
   if (activeSOSList.length === 0) {
     stopSOSSound();
     isMuted = false;
@@ -2106,11 +2106,11 @@ async function checkAndActivateRideStatus() {
   // Let activateRideMode() handle it — it has its own guard + nav-panel logic.
   if (effectiveStatus === 'active' || effectiveStatus === 'started') {
     console.log('[RideSynk] Ride already started — activating nav');
-    
+
     // Also explicitly verify SOS is brought back
     const btnSos = document.getElementById("btn-sos") || document.querySelector(".sos-ctrl-btn");
     if (btnSos) btnSos.style.display = "flex";
-    
+
     activateRideMode();
   } else if (effectiveStatus === 'ended' || effectiveStatus === 'completed') {
     console.log('[RideSynk] Ride ended — showing overlay');
@@ -2144,9 +2144,9 @@ map.on("load", () => {
   addStaticPins();
 
   if (!rideStarted) {
-      renderStaticRoute();
+    renderStaticRoute();
   } else {
-      // wait for admin location updates
+    // wait for admin location updates
   }
 
   startGeolocation();
@@ -2359,7 +2359,7 @@ function getUserLocation(userId) {
   return null;
 }
 
-window.trackSOSUser = function(userId) {
+window.trackSOSUser = function (userId) {
   const loc = getUserLocation(userId);
   if (loc) {
     map.flyTo({

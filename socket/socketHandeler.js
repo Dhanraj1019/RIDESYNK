@@ -33,6 +33,9 @@ const Sos = require("../models/sos.js");
 const chatController = require("../controllers/chatController.js");
 const { toSosPayload } = require("../utils/getsospaylod.js");
 const SOCKET_DEBUG = process.env.SOCKET_DEBUG === "true";
+const LOCATION_THROTTLE_MS = Number(process.env.SOCKET_LOCATION_THROTTLE_MS) || 3000;
+const SOCKET_EVENT_LIMIT_WINDOW_MS = Number(process.env.SOCKET_EVENT_LIMIT_WINDOW_MS) || 10000;
+const SOCKET_EVENT_LIMIT_MAX = Number(process.env.SOCKET_EVENT_LIMIT_MAX) || 60;
 
 // rideId → Set of connected userId strings
 const rideRooms = new Map();
@@ -51,6 +54,9 @@ const rideStatusMap = new Map();
 
 // rideId → { lat, lng } — admin's last known location for late joiners
 const adminLocationMap = new Map();
+
+// socketId:eventName -> lightweight abuse bucket
+const socketEventBuckets = new Map();
 
 // ── Helper: get or create a ride room set ───────────────────────────────
 function getRideRoom(rideId) {
@@ -111,6 +117,20 @@ function escapeHtml(text) {
     return String(text || "").replace(/[&<>"']/g, m => map2[m]);
 }
 
+function isSocketRateLimited(socketId, eventName) {
+    const key = `${socketId}:${eventName}`;
+    const now = Date.now();
+    let bucket = socketEventBuckets.get(key);
+
+    if (!bucket || bucket.resetAt <= now) {
+        bucket = { count: 0, resetAt: now + SOCKET_EVENT_LIMIT_WINDOW_MS };
+        socketEventBuckets.set(key, bucket);
+    }
+
+    bucket.count += 1;
+    return bucket.count > SOCKET_EVENT_LIMIT_MAX;
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // MAIN EXPORT — called once from server.js as registerSocketHandlers(io)
 // ═══════════════════════════════════════════════════════════════════════
@@ -124,6 +144,7 @@ module.exports = function registerSocketHandlers(io) {
         // Track which rideIds this socket has joined (for cleanup on disconnect)
         const joinedRides = new Set();
         let socketUserId = null;
+        let lastLocationEmitAt = 0;
         // ── joinRide ────────────────────────────────────────────────────
         // Client emits: { rideId, userId, name }
         // Server: adds socket to the ride's Socket.IO room + rideRooms map
@@ -191,6 +212,8 @@ module.exports = function registerSocketHandlers(io) {
         // Client emits: { rideId, userId, lat, lng, name, isAdmin }
         // Server: broadcasts to others in the same ride room
         socket.on("sendLocation", async ({ rideId, userId, lat, lng, name, isAdmin } = {}) => {
+            if (isSocketRateLimited(socket.id, "sendLocation")) return;
+
             const rid = safeId(rideId);
             const uid = safeId(userId);
 
@@ -200,6 +223,10 @@ module.exports = function registerSocketHandlers(io) {
             const parsedLng = Number(lng);
             if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) return;
             if (parsedLat < -90 || parsedLat > 90 || parsedLng < -180 || parsedLng > 180) return;
+
+            const now = Date.now();
+            if (now - lastLocationEmitAt < LOCATION_THROTTLE_MS) return;
+            lastLocationEmitAt = now;
 
             // Track this userId as live for this ride
             socketUserId = uid;
@@ -231,16 +258,11 @@ module.exports = function registerSocketHandlers(io) {
             io.to(rid).emit("receiveLocation", payload);
             if (SOCKET_DEBUG) console.log(`[socket] LOCATION BROADCAST: user=${uid} ride=${rid}`);
 
-            try {
-                const ride = await Ride.findById(rid).select("adminId").lean();
-                if (ride && ride.adminId && ride.adminId.toString() === uid) {
-                    io.to(rid).emit("adminLocationUpdated", {
-                        lat: parsedLat,
-                        lng: parsedLng
-                    });
-                }
-            } catch (err) {
-                console.error("[socket] adminLocationUpdated error:", err.message);
+            if (payload.isAdmin) {
+                io.to(rid).emit("adminLocationUpdated", {
+                    lat: parsedLat,
+                    lng: parsedLng
+                });
             }
 
             // Update live count (fire-and-forget)
@@ -323,6 +345,8 @@ module.exports = function registerSocketHandlers(io) {
         //      with _id so client can set data-msg-id for dedup
         socket.on("sendMessage", async ({ rideId, userId, name, text, time } = {}) => {
             try {
+                if (isSocketRateLimited(socket.id, "sendMessage")) return;
+
                 const rid = safeId(rideId);
                 const uid = safeId(userId);
 
@@ -391,6 +415,10 @@ module.exports = function registerSocketHandlers(io) {
         // ── disconnect ──────────────────────────────────────────────────
         // Clean up room membership and broadcast userLeft + memberOffline
         socket.on("disconnect", () => {
+            for (const key of socketEventBuckets.keys()) {
+                if (key.startsWith(`${socket.id}:`)) socketEventBuckets.delete(key);
+            }
+
             // Use socketUserMap for accurate userId lookup on disconnect
             const userData = socketUserMap.get(socket.id);
             if (userData) {

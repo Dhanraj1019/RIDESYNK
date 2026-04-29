@@ -10,7 +10,10 @@ module.exports.home=async (req,res,next)=>{
             return res.redirect("/logout"); // Or wherever appropriate
         }
 
-        const rides=await RideMember.find({userId:req.user._id}).populate({ path: "rideId", select: "ridename status date time sorce destination totalMembers distance" }).lean();
+        const rides=await RideMember.find({ userId: req.user._id, status: "active", isActive: true })
+            .select("rideId role")
+            .populate({ path: "rideId", select: "ridename status date time sorce destination totalMembers distance" })
+            .lean();
         
         let members=0;
         // Filter out null rideIds (if a ride was deleted but members were left behind)
@@ -48,7 +51,10 @@ module.exports.rides=async (req,res,next)=>{
             req.flash("error", "you are not authorized to view this ride list");
             return res.redirect(`/ridesynk/${req.user._id.toString()}/rides`);
         }
-    const fulldata=await RideMember.find({userId:id}).select("rideId").populate({ path: "rideId", select: "ridename status date time sorce destination totalMembers adminId" }).lean();
+    const fulldata=await RideMember.find({ userId: id, status: "active", isActive: true })
+        .select("rideId")
+        .populate({ path: "rideId", select: "ridename status date time sorce destination totalMembers adminId distance" })
+        .lean();
         
         // Filter out null ride references that might exist due to uncascaded deletes
         const validFulldata = fulldata.filter(fd => fd && fd.rideId);
@@ -71,7 +77,9 @@ module.exports.profile=async (req,res,next)=>{
             req.flash("error", "User data not found.");
             return res.redirect("/logout");
         }
-        const rides=await RideMember.find({userId:req.user._id}).lean();
+        const rides=await RideMember.find({ userId: req.user._id, status: "active", isActive: true })
+            .select("_id rideId role status")
+            .lean();
         return res.render("profile/profile.ejs",{data,rides});
     } catch(e) {
         return next(e);

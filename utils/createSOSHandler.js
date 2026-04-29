@@ -19,15 +19,16 @@ module.exports.createSOSHandler = async (req, res) => {
             return res.status(400).json({ success: false, message: "Failed to send SOS" });
         }
 
-        const location = await enrichSosLocationAddress(
-            sanitizeSosLocation(req.body && req.body.location)
-        );
-        if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
+        const sanitizedLocation = sanitizeSosLocation(req.body && req.body.location);
+        if (!sanitizedLocation || !Number.isFinite(sanitizedLocation.lat) || !Number.isFinite(sanitizedLocation.lng)) {
             return res.status(400).json({ success: false, message: "Location is required to send SOS" });
         }
 
-        // Run ride lookup, member validation, and all SOS checks in parallel
-        const [ride, isMember, activeSOS, sosCount, recentSOS] = await Promise.all([
+        const locationPromise = enrichSosLocationAddress(sanitizedLocation);
+
+        // Run external location enrichment and DB checks in parallel.
+        const [location, ride, isMember, activeSOS, sosCount, recentSOS] = await Promise.all([
+            locationPromise,
             Ride.findById(rideId).select("_id").lean(),
             validateRideMember(rideId, req.user._id),
             Sos.findOne({
@@ -42,6 +43,10 @@ module.exports.createSOSHandler = async (req, res) => {
                 createdAt: { $gte: new Date(Date.now() - SOS_COOLDOWN_MS) }
             }).select("_id").lean()
         ]);
+
+        if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
+            return res.status(400).json({ success: false, message: "Location is required to send SOS" });
+        }
 
         if (!ride) {
             return res.status(404).json({ success: false, message: "Failed to send SOS" });
@@ -69,13 +74,14 @@ module.exports.createSOSHandler = async (req, res) => {
 
         const alert = await Sos.findById(sos._id)
             .populate({ path: "userId", select: "firstname lastname username" })
-            .select("rideId userId status createdAt resolvedAt location");
+            .select("rideId userId status createdAt resolvedAt location")
+            .lean();
 
         const members = await RideMember.find({
             rideId: ride._id,
             status: "active",
             isActive: true
-        }).select("userId");
+        }).select("userId").lean();
 
         const recipientUserIds = members
             .map((m) => String(m.userId))

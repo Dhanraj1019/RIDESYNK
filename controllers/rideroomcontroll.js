@@ -18,8 +18,11 @@ module.exports.livetracking=async (req,res,next)=>{
 
     // Run independent DB queries in parallel for performance
     const [ride, rideMembers] = await Promise.all([
-        Ride.findOne({_id:id}).lean(),
+        Ride.findById(id)
+            .select("_id adminId ridename date time sorce destination distance status rideStarted totalMembers sorceLocation destinationLocation")
+            .lean(),
         RideMember.find({ rideId: id, status: "active", isActive: true })
+            .select("userId role")
             .populate({ path: "userId", select: "_id username firstname lastname email" })
             .lean()
     ]);
@@ -61,8 +64,12 @@ module.exports.addmembersform=async (req,res,next)=>{
         
         // Run ride + members fetch in parallel after auth check
         const [ride, rideroom] = await Promise.all([
-            Ride.findById(id).lean(),
-            RideMember.find({rideId:id}).populate({ path: "userId", select: "_id firstname lastname username email phonenumber" }).populate({ path: "rideId", select: "ridename sorce destination date time status adminId" }).lean()
+            Ride.findById(id).select("_id adminId").lean(),
+            RideMember.find({ rideId: id })
+                .select("rideId userId role")
+                .populate({ path: "userId", select: "_id firstname lastname username email phonenumber" })
+                .populate({ path: "rideId", select: "adminId" })
+                .lean()
         ]);
 
         if (!ride || ride.adminId.toString() !== req.user._id.toString()) {
@@ -84,10 +91,17 @@ module.exports.ridedetails=async (req,res,next)=>{
             return next(new ExpressError(403, "Not authorized to view this ride"));
         }
 
-        const data=await Ride.findOne({_id:id}).lean();
+        const [data, members] = await Promise.all([
+            Ride.findById(id)
+                .select("_id adminId ridename date time sorce destination distance status totalMembers sorceLocation destinationLocation")
+                .lean(),
+            RideMember.find({ rideId: id })
+                .select("userId role")
+                .populate({ path: "userId", select: "_id firstname lastname username phonenumber" })
+                .lean()
+        ]);
         if (!data) return next(new ExpressError(404, "Ride not found"));
-        
-        const members=await RideMember.find({rideId:id}).populate({ path: "userId", select: "_id firstname lastname username email phonenumber" }).lean();
+
         // console.log("data = ",data)
         // console.log("id = ",id)
         // console.log("members = ",members)
@@ -168,7 +182,7 @@ module.exports.addmembers=async (req, res) => {
         }
 
         // $addToSet with $each — adds all IDs, no duplicates ever saved
-        const ride=await Ride.findById(rideId).lean();
+        const ride=await Ride.findById(rideId).select("_id adminId").lean();
         if(!ride){
             return res.status(400).json({
                 success:false,

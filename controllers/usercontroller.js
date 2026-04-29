@@ -1,5 +1,6 @@
 const User=require("../models/user")
 const ExpressError=require("../utils/ExpressError.js");
+const { invalidateCachedUser } = require("../utils/performance.js");
 
 module.exports.update=async (req,res,next)=>{
     try {
@@ -22,6 +23,7 @@ module.exports.update=async (req,res,next)=>{
             { $set: sanitizedUpdate }, 
             { new: true, runValidators: true }
         );
+        invalidateCachedUser(req.user._id);
         
         req.flash("success", "Profile updated successfully!");
         return res.redirect("/ridesynk/settings");
@@ -86,6 +88,7 @@ module.exports.delete=async (req, res,next) => {
       deletedAt: now,
       deleteAfter: deleteAfter
     });
+    invalidateCachedUser(id);
 
         // FIX: added return
         return res.redirect("/ridesynk/entry/logout");

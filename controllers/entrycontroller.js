@@ -1,4 +1,5 @@
 const User = require("../models/user.js");
+const { invalidateCachedUser } = require("../utils/performance.js");
 module.exports.loginform = (req, res) => {
     if (!req.user) {
         return res.render("signup/login_screen.ejs");
@@ -24,6 +25,7 @@ module.exports.login = async (req, res) => {
             deletedAt: null,
             deleteAfter: null
         });
+        invalidateCachedUser(user._id);
 
         req.flash("success", "Your account has been restored successfully 🎉");
     } else {
@@ -131,6 +133,7 @@ module.exports.conpleteprofileform = async (req, res, next) => {
 module.exports.completeprofile = async (req, res) => {
     const { data } = req.body;
     const t = await User.findByIdAndUpdate(req.user._id, { ...data }, { runValidators: true });
+    invalidateCachedUser(req.user._id);
     req.flash("success", "your profile save successfully...")
     // FIX: added return
     return res.redirect("/ridesynk/home");
