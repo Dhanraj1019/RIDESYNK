@@ -6,6 +6,11 @@
   <div class="top-bar header-row">
     <button class="back-btn"><i class="bi bi-arrow-left" onclick="history.back()"></i></button>
     <h1>Settings</h1>
+      <div class="d-flex align-items-center gap-2" style="position:absolute;right: 2rem;">
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSelPb27a4burOHMJF2rolHGXAZ54JfEfpLqkYTMnjyyJnKy7g/viewform?usp=publish-editor" target="_blank" class="nav-icon-btn" title="Feedback">
+          <i class="bi bi-chat-quote"></i>
+        </a>
+    </div>
   </div>
   
   <div class="page">
@@ -101,7 +106,7 @@
     <p class="section-label">Support</p>
     <div class="menu-group">
   
-      <button class="menu-item">
+      <button class="menu-item" data-bs-toggle="modal" data-bs-target="#supportModal">
         <span class="item-icon icon-pink"><i class="bi bi-headset"></i></span>
         <div class="item-body">
           <p class="item-title">Help &amp; Support</p>
@@ -110,11 +115,20 @@
         <span class="item-end"><i class="bi bi-chevron-right"></i></span>
       </button>
   
-      <button class="menu-item">
+      <button class="menu-item" onclick="window.location.href='/ridesynk/terms'">
         <span class="item-icon icon-blue"><i class="bi bi-file-earmark-text-fill"></i></span>
         <div class="item-body">
           <p class="item-title">Terms &amp; Privacy</p>
           <p class="item-sub">Legal policies</p>
+        </div>
+        <span class="item-end"><i class="bi bi-chevron-right"></i></span>
+      </button>
+
+      <button class="menu-item" onclick="window.location.href='/ridesynk/about_us'">
+        <span class="item-icon icon-green"><i class="bi bi-info-circle-fill"></i></span>
+        <div class="item-body">
+          <p class="item-title">About Us</p>
+          <p class="item-sub">Learn more about Ridesync</p>
         </div>
         <span class="item-end"><i class="bi bi-chevron-right"></i></span>
       </button>
@@ -147,6 +161,35 @@
   <!-- ── MODALS ── -->
   
   <!-- Custom Profile View + Edit modals are mounted by JS components -->
+
+  <!-- Support Modal -->
+  <div class="modal fade" id="supportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Help & Support</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>For any questions or support, please reach out to us:</p>
+          <div class="support-links">
+            <a href="mailto:support@ridesync.com" class="support-item">
+              <i class="bi bi-envelope-fill"></i>
+              <span>support@ridesync.com</span>
+            </a>
+            <a href="tel:+1234567890" class="support-item">
+              <i class="bi bi-telephone-fill"></i>
+              <span>+1 234 567 890</span>
+            </a>
+            <a href="https://instagram.com/ridesync" target="_blank" class="support-item">
+              <i class="bi bi-instagram"></i>
+              <span>@ridesync</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   
   <!-- Change Password -->
   <div class="modal fade" id="changePasswordModal" tabindex="-1">

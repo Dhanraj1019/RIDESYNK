@@ -28,7 +28,9 @@
             const _isInvite = /^\/invite\/[^/]+$/.test(_u);
             const _isProfile = _u.endsWith('/profile');
             const _isSettings = _u.endsWith('/settings');
-            const _is404 = _u.includes('/404');
+            const _statusCode = (typeof status !== 'undefined') ? Number(status) : NaN;
+            const _isErrorView = (typeof body === 'string') && body.includes('error-page-wrapper');
+            const _is404 = _u.includes('/404') || _isErrorView || _statusCode >= 400;
         %>
     
     <link href="/css/index.css" rel="stylesheet">
@@ -63,7 +65,7 @@
             <link href="/css/ride_list.css" rel="stylesheet">
             <link href="/css/noride.css" rel="stylesheet">
         <% } %>
-        <% if (_is404 || (typeof status !== 'undefined')) { %>
+        <% if (_is404) { %>
             <link href="/css/404.css" rel="stylesheet">
         <% } %>
         <% if (_isSettings) { %>

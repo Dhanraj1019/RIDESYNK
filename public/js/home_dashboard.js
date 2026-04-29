@@ -25,6 +25,48 @@
       overlay.addEventListener("click", () => { drawer.classList.remove("open"); overlay.classList.remove("open"); });
   }
 
+  function animateStatValues() {
+    const values = document.querySelectorAll(".stat-value");
+
+    values.forEach((value) => {
+      const originalText = value.textContent.trim();
+      const match = originalText.match(/^(\d+(?:\.\d+)?)(.*)$/);
+
+      if (!match) return;
+
+      const target = Number(match[1]);
+      const suffix = match[2] || "";
+      const decimals = match[1].includes(".") ? match[1].split(".")[1].length : 0;
+      const duration = 850;
+      const startTime = performance.now();
+
+      value.textContent = `${decimals ? "0.0" : "0"}${suffix}`;
+
+      function tick(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = target * eased;
+        const displayValue = decimals ? current.toFixed(decimals) : Math.round(current);
+
+        value.textContent = `${displayValue}${suffix}`;
+
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          value.textContent = originalText;
+        }
+      }
+
+      requestAnimationFrame(tick);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", animateStatValues, { once: true });
+  } else {
+    animateStatValues();
+  }
+
   function setActive(tab) {
     document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
     const el = document.getElementById("nav-" + tab);

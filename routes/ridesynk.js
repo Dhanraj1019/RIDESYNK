@@ -9,6 +9,12 @@ router.route("/home")
 router.route("/settings")
 .get(isAuthenticated,ridesynkcontroller.setting);
 
+router.route("/about_us")
+.get(isAuthenticated,ridesynkcontroller.about_us);
+
+router.route("/terms")
+.get(isAuthenticated,ridesynkcontroller.terms);
+
 router.route("/profile")
 .get(isAuthenticated,ridesynkcontroller.profile);
 

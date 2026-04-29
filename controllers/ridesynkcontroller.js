@@ -44,6 +44,24 @@ module.exports.setting=async (req,res,next)=>{
     }
 };
 
+module.exports.about_us = async (req, res, next) => {
+    try {
+        const data = req.user;
+        return res.render("profile/about_us.ejs", { data });
+    } catch(e) {
+        return next(e);
+    }
+};
+
+module.exports.terms = async (req, res, next) => {
+    try {
+        const data = req.user;
+        return res.render("profile/terms.ejs", { data });
+    } catch(e) {
+        return next(e);
+    }
+};
+
 module.exports.rides=async (req,res,next)=>{
     try {
         const {id} = req.params;

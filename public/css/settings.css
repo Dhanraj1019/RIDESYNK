@@ -295,6 +295,35 @@
     }
     .toast-success { background: #12121A; color: #fff; }
 
+    /* Support Modal Styles */
+    .support-links {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .support-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg);
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--text);
+      transition: background .15s;
+    }
+
+    .support-item:hover {
+      background: #e9e9f0;
+    }
+
+    .support-item i {
+      font-size: 1.2rem;
+      color: var(--primary);
+    }
+
     /* ============================================================
        Settings Premium Refinement
        CSS-only override, structure-safe
