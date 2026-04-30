@@ -654,7 +654,7 @@ function restoreMapOverlaysAfterStyleChange() {
   drawStaticRoute();
 }
 
-function renderRoute(routeGeoJSON, isDynamic = false) {
+function renderRoute(routeGeoJSON, isDynamic = false, color = "#3b82f6") {
   const sourceId = "route-source";
   const layerId = "route-layer";
 
@@ -678,7 +678,7 @@ function renderRoute(routeGeoJSON, isDynamic = false) {
       source: sourceId,
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#2563eb",
+        "line-color": color,
         "line-width": 5,
         "line-opacity": 0.8
       }
@@ -712,7 +712,8 @@ async function renderStaticRoute() {
     totalDuration = route.duration;
 
     const routeGeoJSON = { type: "Feature", geometry: route.geometry };
-    renderRoute(routeGeoJSON, false);
+    // Static route is always blue before ride starts
+    renderRoute(routeGeoJSON, false, "#3b82f6");
   } catch (e) {
     toast("Network error loading route.", "error");
   }
@@ -1050,7 +1051,10 @@ function updateNavigation(lat, lng) {
   }
 }
 
-/* ── LIVE ROUTE (after ride starts, from the rider's live position) ──────── */
+/* ── LIVE ROUTE (after ride starts, from admin's live position) ─────── */
+// Displays a dynamic blue line from source → admin's location → destination
+// This route updates as the admin moves along the route.
+// Admin is treated as an intermediate waypoint, not just another member.
 async function drawLiveRoute(currentLat, currentLng) {
   clearTimeout(adminOfflineTimer);
   adminOfflineTimer = setTimeout(() => {
@@ -1065,12 +1069,13 @@ async function drawLiveRoute(currentLat, currentLng) {
 
   let coordinates = [
     rideData.sorceLocation.coordinates,   // [lng, lat]
-    [currentLng, currentLat],             // adminLiveLocation [lng, lat]
+    [currentLng, currentLat],             // admin's live location [lng, lat]
     rideData.destinationLocation.coordinates
   ];
 
   const distFromSrc = haversine(currentLat, currentLng, srcLat, srcLng);
-  // EDGE CASE
+  
+  // EDGE CASE: If admin is very close to source (<50m), simplify to destination only
   if (distFromSrc < 50) {
     coordinates = [
       [currentLng, currentLat],
@@ -1078,13 +1083,13 @@ async function drawLiveRoute(currentLat, currentLng) {
     ];
   }
 
-  if (DEBUG_LOG) console.log("FINAL ORDER:", coordinates);
+  if (DEBUG_LOG) console.log("[Route] Live route coordinates:", coordinates);
 
   const coordsString = coordinates
     .map(coord => coord.join(","))
     .join(";");
 
-  // FORCE WAYPOINT ORDER (CRITICAL FIX)
+  // FORCE WAYPOINT ORDER (ensures source → admin → destination sequence)
   const wpParam = coordinates.length === 3 ? "&waypoints=0;1;2" : "&waypoints=0;1";
 
   const url =
@@ -1099,8 +1104,7 @@ async function drawLiveRoute(currentLat, currentLng) {
 
     const routeGeoJSON = data.routes[0].geometry;
 
-    // Keep navigation steps aligned to the rider's own current route.
-    // Be flexible based on how many legs were returned
+    // Extract navigation steps from the appropriate leg
     let steps = [];
     if (distFromSrc < 50 && data.routes[0].legs[0]) {
       steps = data.routes[0].legs[0].steps || [];
@@ -1111,16 +1115,17 @@ async function drawLiveRoute(currentLat, currentLng) {
     }
 
     navigationSteps = steps;
-    // Don't return early if no steps, just keep going
     if (navigationSteps.length) {
       currentStepIndex = findNearestNavigationStepIndex(navigationSteps, currentLat, currentLng);
     }
     lastRouteOrigin = { lat: currentLat, lng: currentLng };
 
     const routeData = { type: "Feature", geometry: routeGeoJSON };
-    renderRoute(routeData, true);
-    if (DEBUG_LOG) console.log("ROUTE RECALCULATED");
+    // Live route is always blue
+    renderRoute(routeData, true, "#3b82f6");
+    if (DEBUG_LOG) console.log("[Route] Live route recalculated successfully");
   } catch (e) {
+    console.error("[Route] Error fetching live route:", e);
     toast("Failed to update route.", "error");
   }
 }
