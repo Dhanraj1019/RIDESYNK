@@ -176,12 +176,34 @@ module.exports = function registerSocketHandlers(io) {
                 }
 
                 // Send all current active locations to the newly joined user immediately (Step 1)
+                // const activeLocs = getActiveLocations(rid);
+                // const initialMembers = {};
+                // for (const [memberId, locData] of activeLocs.entries()) {
+                //     initialMembers[memberId] = locData;
+                // }
+                // Send all members to the newly joined user immediately
+                const membersList = await RideMember.find({ rideId: rid }).populate("userId", "firstname lastname username").lean();
                 const activeLocs = getActiveLocations(rid);
-                const initialMembers = {};
-                for (const [memberId, locData] of activeLocs.entries()) {
-                    initialMembers[memberId] = locData;
-                }
-                socket.emit("initialLocations", initialMembers);
+                const initialMembersArr = membersList.map(m => {
+                    const uidStr = m.userId ? m.userId._id.toString() : "";
+                    const loc = activeLocs.get(uidStr);
+                    const isAdm = m.role === "admin";
+                    let memberName = "Rider";
+                    if (m.userId) {
+                        const f = (m.userId.firstname || "").trim();
+                        const l = (m.userId.lastname || "").trim();
+                        memberName = (f || l) ? `${f} ${l}`.trim() : (m.userId.username || "Rider");
+                    }
+                    return {
+                        userId: uidStr,
+                        name: escapeHtml(memberName),
+                        lat: loc ? loc.lat : null,
+                        lng: loc ? loc.lng : null,
+                        isAdmin: isAdm
+                    };
+                }).filter(m => m.userId !== "");
+
+                socket.emit("initialMembers", initialMembersArr);
 
                 // Send current ride state to late joiner
                 const rideState = rideStatusMap.get(rid);
@@ -426,7 +448,6 @@ module.exports = function registerSocketHandlers(io) {
                 socket.to(rideId).emit("memberOffline", { userId });
                 socketUserMap.delete(socket.id);
             }
-
             // Clean up room membership and broadcast userLeft + memberOffline
             // Use a proper async function to iterate the Set to avoid unhandled promise rejections
             const processCleanup = async () => {
@@ -437,9 +458,10 @@ module.exports = function registerSocketHandlers(io) {
                         room.delete(socket.id);
                         if (room.size === 0) rideRooms.delete(rid);
 
-                        // Remove user from live set and broadcast their departure
+                        // Remove user from live set, active locations, and broadcast their departure
                         if (socketUserId) {
                             getLiveSet(rid).delete(socketUserId);
+                            getActiveLocations(rid).delete(socketUserId);
                             io.to(rid).emit("userLeft", { userId: socketUserId });
                         }
 

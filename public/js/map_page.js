@@ -654,53 +654,46 @@ function restoreMapOverlaysAfterStyleChange() {
   drawStaticRoute();
 }
 
-async function renderStaticRoute() {
-  const source = rideData.sorceLocation.coordinates;
-  const destination = rideData.destinationLocation.coordinates;
+function renderRoute(routeGeoJSON, isDynamic = false) {
+  const sourceId = "route-source";
+  const layerId = "route-layer";
 
-  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/` +
-    `${source[0]},${source[1]};${destination[0]},${destination[1]}` +
-    `?geometries=geojson&access_token=${map_token}`;
-
-  const res = await fetch(url);
-  const data = await res.json();
-
-  const routeGeoJSON = {
-    type: "Feature",
-    geometry: data.routes[0].geometry
-  };
-
-  renderRoute(routeGeoJSON);
-}
-
-function renderRoute(routeGeoJSON) {
+  // Clean up any old static-route or route sources if they exist from previous state
   removeLayerSafe("static-route");
   removeSourceSafe("static-route");
+  removeLayerSafe("route");
+  removeSourceSafe("route");
 
-  map.addSource("static-route", {
-    type: "geojson",
-    data: routeGeoJSON
-  });
+  if (map.getSource(sourceId)) {
+    map.getSource(sourceId).setData(routeGeoJSON);
+  } else {
+    map.addSource(sourceId, {
+      type: "geojson",
+      data: routeGeoJSON
+    });
 
-  map.addLayer({
-    id: "static-route",
-    type: "line",
-    source: "static-route",
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": "#2563eb",
-      "line-width": 5,
-      "line-opacity": 0.8
-    }
-  });
+    map.addLayer({
+      id: layerId,
+      type: "line",
+      source: sourceId,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#2563eb",
+        "line-width": 5,
+        "line-opacity": 0.8
+      }
+    });
+  }
 
-  const bounds = new mapboxgl.LngLatBounds();
-  routeGeoJSON.geometry.coordinates.forEach(c => bounds.extend(c));
-  map.fitBounds(bounds, { padding: 80, duration: 1000 });
+  if (!isDynamic) {
+    const bounds = new mapboxgl.LngLatBounds();
+    routeGeoJSON.geometry.coordinates.forEach(c => bounds.extend(c));
+    map.fitBounds(bounds, { padding: 80, duration: 1000 });
+  }
 }
 
 /* ── STATIC ROUTE (before ride starts) ─────────────────────────────── */
-async function drawStaticRoute() {
+async function renderStaticRoute() {
   const url =
     `https://api.mapbox.com/directions/v5/mapbox/driving/` +
     `${srcLng},${srcLat};${dstLng},${dstLat}` +
@@ -718,29 +711,8 @@ async function drawStaticRoute() {
     totalDistance = route.distance;
     totalDuration = route.duration;
 
-    removeLayerSafe("static-route");
-    removeSourceSafe("static-route");
-
-    map.addSource("static-route", {
-      type: "geojson",
-      data: { type: "Feature", geometry: route.geometry }
-    });
-
-    map.addLayer({
-      id: "static-route",
-      type: "line",
-      source: "static-route",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": "#2563eb",
-        "line-width": 5,
-        "line-opacity": 0.8
-      }
-    });
-
-    const bounds = new mapboxgl.LngLatBounds();
-    route.geometry.coordinates.forEach(c => bounds.extend(c));
-    map.fitBounds(bounds, { padding: 80, duration: 1000 });
+    const routeGeoJSON = { type: "Feature", geometry: route.geometry };
+    renderRoute(routeGeoJSON, false);
   } catch (e) {
     toast("Network error loading route.", "error");
   }
@@ -1145,27 +1117,8 @@ async function drawLiveRoute(currentLat, currentLng) {
     }
     lastRouteOrigin = { lat: currentLat, lng: currentLng };
 
-    // Remove static route on first live route draw
-    removeLayerSafe("static-route");
-    removeSourceSafe("static-route");
-
-    // Update existing route source data (prevents flicker) or create new
     const routeData = { type: "Feature", geometry: routeGeoJSON };
-    if (map.getSource("route")) {
-      map.getSource("route").setData(routeData);
-    } else {
-      map.addSource("route", { type: "geojson", data: routeData });
-      map.addLayer({
-        id: "route",
-        type: "line",
-        source: "route",
-        layout: { "line-join": "round", "line-cap": "round" },
-        paint: {
-          "line-color": "#2563eb",
-          "line-width": 5
-        }
-      });
-    }
+    renderRoute(routeData, true);
     if (DEBUG_LOG) console.log("ROUTE RECALCULATED");
   } catch (e) {
     toast("Failed to update route.", "error");
@@ -1322,6 +1275,11 @@ function updateStatusBadge(status) {
 function renderMembersPanel() {
   const container = document.getElementById('members-list');
   if (!container) return;
+
+  const liveCountLabel = document.getElementById("live-count-label");
+  if (liveCountLabel) {
+    liveCountLabel.textContent = `${onlineUsers.size} / ${rideData.members.length} Riders Live`;
+  }
 
   // Build member data with computed distances from memberLocations
   const memberData = rideData.members.map((member) => {
@@ -1702,9 +1660,7 @@ function initWatch() {
 
       if (rideStarted) {
         updateNavigation(lat, lng);
-        if (isAdmin) {
-          scheduleRouteRedraw(lat, lng);
-        }
+        // Route updates for admin are now purely handled by receiving adminLocationUpdated
       }
 
       // Always re-render members panel (throttled to prevent DOM thrashing)
@@ -1740,18 +1696,22 @@ socket.on("connect", () => {
   socket.emit("joinRide", { rideId: rideData._id, userId: userid, name: myName });
 });
 
-socket.on("initialLocations", (members) => {
-  Object.values(members).forEach(user => {
+socket.on("initialMembers", (members) => {
+  members.forEach(user => {
     const uid = user.userId.toString();
-    upsertMarker(uid, user.lat, user.lng, user.name, user.isAdmin);
-    memberLocations.set(uid, { lat: user.lat, lng: user.lng, updatedAt: Date.now() });
+    
+    // Always track user in online users
     onlineUsers.add(uid);
 
-    updateDottedPath(uid, user.lat, user.lng);
-    if (uid === adminUserId || user.isAdmin) {
-      adminLiveLocation = { lat: user.lat, lng: user.lng };
-      if (isRideStarted) {
-        updateDynamicRoute(adminLiveLocation);
+    // Render if we have location
+    if (user.lat !== null && user.lng !== null) {
+      upsertMarker(uid, user.lat, user.lng, user.name, user.isAdmin);
+      memberLocations.set(uid, { lat: user.lat, lng: user.lng, updatedAt: Date.now() });
+      updateDottedPath(uid, user.lat, user.lng);
+
+      if (uid === adminUserId || user.isAdmin) {
+        adminLiveLocation = { lat: user.lat, lng: user.lng };
+        // Route updates now handled by strict logic in adminLocationUpdated or checkAndActivateRideStatus
       }
     }
   });
@@ -1786,12 +1746,9 @@ socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }
   onlineUsers.add(uid);
   updateDottedPath(uid, lat, lng);
 
-  // If this is admin broadcasting their position and ride started → redraw route
+  // Just track admin location for late updates, route drawing is handled by adminLocationUpdated
   if (uid === adminUserId || senderIsAdmin) {
     adminLiveLocation = { lat, lng };
-    if (isRideStarted) {
-      scheduleRouteRedraw(lat, lng);
-    }
   }
 
   // Follow admin if we're a member
@@ -1916,10 +1873,7 @@ socket.on("userLeft", ({ userId }) => {
   throttledRenderMembersPanel();
 });
 
-socket.on("liveCount", ({ count, total }) => {
-  const el = document.getElementById("live-count-label");
-  if (el) el.textContent = `${count} / ${total} Riders Live`;
-});
+// (liveCount listener removed - handled dynamically by renderMembersPanel)
 
 socket.on("memberOffline", ({ userId }) => {
   if (!userId) return;
