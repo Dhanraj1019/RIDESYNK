@@ -82,14 +82,14 @@
         >
           <input type="hidden" class="member-input" value="<%= m.userId._id.toString() %>" />
           <div class="mem-avatar avatar av-1 online">
-            <%= m.userId.firstname[0].toUpperCase() %>
+            <%= (m.userId.firstname || 'U').charAt(0).toUpperCase() %>
           </div>
           <div class="mem-info">
             <div class="mem-name">
-              <%= m.userId.firstname + " " + m.userId.lastname %>
+              <%= (m.userId.firstname || 'Unknown') + " " + (m.userId.lastname || '') %>
             </div>
             <div class="mem-phone">
-              <%= m.userId.phonenumber %>
+              <%= m.userId.phonenumber || 'N/A' %>
             </div>
           </div>
           <div class="mem-actions">

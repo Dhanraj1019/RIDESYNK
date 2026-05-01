@@ -84,14 +84,14 @@ const onlineUsers = new Set();
 // Tracks which users have already fired the "reached source" notification
 const reachedNotified = new Set();
 
-// Throttled wrapper for renderMembersPanel — max 1 call per 2 seconds
+// Throttled wrapper for renderMembersPanel — max 1 call per 1 second
 let _membersPanelTimer = null;
 function throttledRenderMembersPanel() {
   if (_membersPanelTimer) return;
   _membersPanelTimer = setTimeout(() => {
     _membersPanelTimer = null;
     renderMembersPanel();
-  }, 2000);
+  }, 1000);
 }
 
 /* ── NAVIGATION STATE ───────────────────────────────────────────────── */
@@ -142,6 +142,8 @@ function removeSourceSafe(id) {
   if (map.getSource(id)) map.removeSource(id);
 }
 
+const dottedPathTimers = new Map();
+
 function removeDottedPathForUser(userId) {
   const uid = String(userId);
   const ids = [
@@ -164,14 +166,16 @@ function removeDottedPathForUser(userId) {
   });
 
   // Remove layers/sources after fade completes (300ms default Mapbox transition)
-  setTimeout(() => {
+  const timer = setTimeout(() => {
     ids.forEach(({ layerId, casingId, sourceId }) => {
       if (map.getLayer(casingId)) map.removeLayer(casingId);
       if (map.getLayer(layerId)) map.removeLayer(layerId);
       if (map.getSource(sourceId)) map.removeSource(sourceId);
     });
+    dottedPathTimers.delete(uid);
   }, 300);
 
+  dottedPathTimers.set(uid, timer);
   dottedPathThrottle.delete(uid);
 }
 
@@ -254,8 +258,7 @@ function handleActiveSOS(sos) {
   activateSOSMarker(sos.userId);
 
   const isMine = String(sos.userId) === String(userid);
-  if (!isMine) {
-    isMuted = false;
+  if (!isMine && !mutedSosIds.has(String(sos._id || sos.userId))) {
     playSOSSound();
   }
 }
@@ -275,7 +278,7 @@ async function fetchActiveSOS() {
 }
 
 let sosAudio = null;
-let isMuted = false;
+const mutedSosIds = new Set();
 let sosSoundPlayed = false;
 const SOS_AUDIO_URL = "/music/sos.mp3";
 
@@ -304,7 +307,6 @@ function hasAudibleActiveSOS() {
 }
 
 function playSOSSound() {
-  if (isMuted) return;
   if (sosSoundPlayed) return;
 
   const audio = getSOSAudio();
@@ -327,12 +329,10 @@ function stopSOSSound() {
   sosSoundPlayed = false;
 }
 
-function muteSOSAlert() {
-  isMuted = true;
+function stopSOS() {
   stopSOSSound();
 }
-window.muteSOSAlert = muteSOSAlert; // Export for onclick handler in HTML
-window.stopSOS = muteSOSAlert;
+window.stopSOS = stopSOS;
 
 function focusMap(location) {
   if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return;
@@ -519,7 +519,8 @@ function upsertSosCard(sos) {
   const muteBtn = card.querySelector(".sos-alert-mute-btn");
   if (muteBtn) {
     muteBtn.addEventListener("click", () => {
-      muteSOSAlert();
+      mutedSosIds.add(String(sos._id || sos.userId));
+      stopSOSSound();
       muteBtn.textContent = "🔇 Muted";
       muteBtn.disabled = true;
     });
@@ -644,9 +645,9 @@ function restoreMapOverlaysAfterStyleChange() {
   if (rideStarted) {
     if (userMarkers.has(adminUserId)) {
       const adminLoc = userMarkers.get(adminUserId);
-      drawLiveRoute(adminLoc.lat, adminLoc.lng);
+      updateDynamicRoute(adminLoc.lat, adminLoc.lng);
     } else if (isAdmin && Number.isFinite(myLat) && Number.isFinite(myLng)) {
-      drawLiveRoute(myLat, myLng);
+      updateDynamicRoute(myLat, myLng);
     }
     return;
   }
@@ -654,46 +655,8 @@ function restoreMapOverlaysAfterStyleChange() {
   drawStaticRoute();
 }
 
-function renderRoute(routeGeoJSON, isDynamic = false, color = "#3b82f6") {
-  const sourceId = "route-source";
-  const layerId = "route-layer";
-
-  // Clean up any old static-route or route sources if they exist from previous state
-  removeLayerSafe("static-route");
-  removeSourceSafe("static-route");
-  removeLayerSafe("route");
-  removeSourceSafe("route");
-
-  if (map.getSource(sourceId)) {
-    map.getSource(sourceId).setData(routeGeoJSON);
-  } else {
-    map.addSource(sourceId, {
-      type: "geojson",
-      data: routeGeoJSON
-    });
-
-    map.addLayer({
-      id: layerId,
-      type: "line",
-      source: sourceId,
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": color,
-        "line-width": 5,
-        "line-opacity": 0.8
-      }
-    });
-  }
-
-  if (!isDynamic) {
-    const bounds = new mapboxgl.LngLatBounds();
-    routeGeoJSON.geometry.coordinates.forEach(c => bounds.extend(c));
-    map.fitBounds(bounds, { padding: 80, duration: 1000 });
-  }
-}
-
 /* ── STATIC ROUTE (before ride starts) ─────────────────────────────── */
-async function renderStaticRoute() {
+async function drawStaticRoute() {
   const url =
     `https://api.mapbox.com/directions/v5/mapbox/driving/` +
     `${srcLng},${srcLat};${dstLng},${dstLat}` +
@@ -702,6 +665,10 @@ async function renderStaticRoute() {
   try {
     const res = await fetch(url);
     const data = await res.json();
+
+    // FIX: strictly forbid overlapping if ride started during fetch
+    if (rideStarted) return;
+
     if (!data.routes || !data.routes.length) {
       toast("Could not load route.", "error");
       return;
@@ -712,8 +679,33 @@ async function renderStaticRoute() {
     totalDuration = route.duration;
 
     const routeGeoJSON = { type: "Feature", geometry: route.geometry };
-    // Static route is always blue before ride starts
-    renderRoute(routeGeoJSON, false, "#3b82f6");
+    const sourceId = "static-route-source";
+    const layerId = "static-route-layer";
+
+    if (map.getSource(sourceId)) {
+      map.getSource(sourceId).setData(routeGeoJSON);
+    } else {
+      map.addSource(sourceId, {
+        type: "geojson",
+        data: routeGeoJSON
+      });
+
+      map.addLayer({
+        id: layerId,
+        type: "line",
+        source: sourceId,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": "#3b82f6",
+          "line-width": 5,
+          "line-opacity": 0.8
+        }
+      });
+    }
+
+    const bounds = new mapboxgl.LngLatBounds();
+    routeGeoJSON.geometry.coordinates.forEach(c => bounds.extend(c));
+    map.fitBounds(bounds, { padding: 80, duration: 1000 });
   } catch (e) {
     toast("Network error loading route.", "error");
   }
@@ -732,6 +724,16 @@ async function updateDottedPath(userId, lat, lng) {
   const uid = String(userId);
   const layerId = `dotted-path-${uid}`;
   const casingId = `${layerId}-casing`;
+
+  if (dottedPathTimers.has(uid)) {
+    clearTimeout(dottedPathTimers.get(uid));
+    dottedPathTimers.delete(uid);
+    // Restore opacity if it was fading out
+    try { if (map.getLayer(layerId)) map.setPaintProperty(layerId, 'line-opacity', 1); } catch (_) { }
+    try { if (map.getLayer(casingId)) map.setPaintProperty(casingId, 'line-opacity', 0.6); } catch (_) { }
+    try { if (map.getLayer(`dotted-${uid}`)) map.setPaintProperty(`dotted-${uid}`, 'line-opacity', 1); } catch (_) { }
+    try { if (map.getLayer(`dotted-${uid}-casing`)) map.setPaintProperty(`dotted-${uid}-casing`, 'line-opacity', 0.6); } catch (_) { }
+  }
   const srcId = layerId;
 
   // Within 80m of source — remove path, rider has arrived
@@ -1052,84 +1054,6 @@ function updateNavigation(lat, lng) {
 }
 
 /* ── LIVE ROUTE (after ride starts, from admin's live position) ─────── */
-// Displays a dynamic blue line from source → admin's location → destination
-// This route updates as the admin moves along the route.
-// Admin is treated as an intermediate waypoint, not just another member.
-async function drawLiveRoute(currentLat, currentLng) {
-  clearTimeout(adminOfflineTimer);
-  adminOfflineTimer = setTimeout(() => {
-    toast("Live route refresh paused.", "warn");
-  }, 10000);
-
-  if (!Number.isFinite(currentLat) || !Number.isFinite(currentLng)) {
-    return;
-  }
-
-  const requestId = ++activeRouteRequestId;
-
-  let coordinates = [
-    rideData.sorceLocation.coordinates,   // [lng, lat]
-    [currentLng, currentLat],             // admin's live location [lng, lat]
-    rideData.destinationLocation.coordinates
-  ];
-
-  const distFromSrc = haversine(currentLat, currentLng, srcLat, srcLng);
-  
-  // EDGE CASE: If admin is very close to source (<50m), simplify to destination only
-  if (distFromSrc < 50) {
-    coordinates = [
-      [currentLng, currentLat],
-      rideData.destinationLocation.coordinates
-    ];
-  }
-
-  if (DEBUG_LOG) console.log("[Route] Live route coordinates:", coordinates);
-
-  const coordsString = coordinates
-    .map(coord => coord.join(","))
-    .join(";");
-
-  // FORCE WAYPOINT ORDER (ensures source → admin → destination sequence)
-  const wpParam = coordinates.length === 3 ? "&waypoints=0;1;2" : "&waypoints=0;1";
-
-  const url =
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}` +
-    `?overview=full&geometries=geojson&steps=true${wpParam}&access_token=${map_token}`;
-
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (requestId !== activeRouteRequestId) return;
-    if (!data.routes || !data.routes.length) return;
-
-    const routeGeoJSON = data.routes[0].geometry;
-
-    // Extract navigation steps from the appropriate leg
-    let steps = [];
-    if (distFromSrc < 50 && data.routes[0].legs[0]) {
-      steps = data.routes[0].legs[0].steps || [];
-    } else if (distFromSrc >= 50 && data.routes[0].legs[1]) {
-      steps = data.routes[0].legs[1].steps || [];
-    } else if (data.routes[0].legs[0]) {
-      steps = data.routes[0].legs[0].steps || [];
-    }
-
-    navigationSteps = steps;
-    if (navigationSteps.length) {
-      currentStepIndex = findNearestNavigationStepIndex(navigationSteps, currentLat, currentLng);
-    }
-    lastRouteOrigin = { lat: currentLat, lng: currentLng };
-
-    const routeData = { type: "Feature", geometry: routeGeoJSON };
-    // Live route is always blue
-    renderRoute(routeData, true, "#3b82f6");
-    if (DEBUG_LOG) console.log("[Route] Live route recalculated successfully");
-  } catch (e) {
-    console.error("[Route] Error fetching live route:", e);
-    toast("Failed to update route.", "error");
-  }
-}
-
 function scheduleRouteRedraw(lat, lng) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
@@ -1137,15 +1061,13 @@ function scheduleRouteRedraw(lat, lng) {
     const movedDistance = haversine(lat, lng, lastRouteOrigin.lat, lastRouteOrigin.lng);
     if (movedDistance < 50) return;
   } else if (routeRedrawTimer) {
-    // If we haven't drawn the route yet (lastRouteOrigin is null)
-    // but the timer is already running, don't keep resetting it.
     return;
   }
 
   clearTimeout(routeRedrawTimer);
   routeRedrawTimer = setTimeout(() => {
     routeRedrawTimer = null;
-    drawLiveRoute(lat, lng);
+    updateDynamicRoute(lat, lng);
   }, 5000);
 }
 
@@ -1164,7 +1086,7 @@ function shouldUpdateRoute(lat, lng) {
       lastDynamicRouteUpdateLocation.lat,
       lastDynamicRouteUpdateLocation.lng
     );
-    if (movedDistance < 20) return false;
+    if (movedDistance < 100) return false;
   }
 
   lastDynamicRouteUpdateTime = now;
@@ -1172,23 +1094,127 @@ function shouldUpdateRoute(lat, lng) {
   return true;
 }
 
-function updateDynamicRoute(adminLocationOrLat, adminLng) {
-  const lat = Number(
+// Displays a dynamic blue line: SOURCE → ADMIN (live) → DESTINATION
+// This route updates as the admin moves. Source and destination are fixed;
+// only the admin's live position (middle waypoint) changes each update.
+async function updateDynamicRoute(adminLocationOrLat, adminLng) {
+  // ❗ STRICT GUARD: Only draw dynamic route if the ride has truly started
+  if (!rideStarted) return;
+
+  const currentLat = Number(
     typeof adminLocationOrLat === "object" && adminLocationOrLat !== null
       ? adminLocationOrLat.lat
       : adminLocationOrLat
   );
-  const lng = Number(
+  const currentLng = Number(
     typeof adminLocationOrLat === "object" && adminLocationOrLat !== null
       ? adminLocationOrLat.lng
       : adminLng
   );
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+  if (!Number.isFinite(currentLat) || !Number.isFinite(currentLng)) {
+    console.warn("[Route] updateDynamicRoute: invalid admin coordinates, skipping.");
+    return;
+  }
 
   clearTimeout(routeRedrawTimer);
   routeRedrawTimer = null;
-  drawLiveRoute(lat, lng);
+
+  clearTimeout(adminOfflineTimer);
+  adminOfflineTimer = setTimeout(() => {
+    toast("Live route refresh paused.", "warn");
+  }, 10000);
+
+  // Clean up static route if it is still drawn
+  removeLayerSafe("static-route-layer");
+  removeSourceSafe("static-route-source");
+
+  const requestId = ++activeRouteRequestId;
+
+  // ✅ FIX: Full 3-point route — SOURCE → ADMIN (live) → DESTINATION
+  // Previously this was only [admin → destination], missing the entire first leg.
+  const coordinates = [
+    rideData.sorceLocation.coordinates,       // [srcLng, srcLat]  — fixed
+    [currentLng, currentLat],                 // [adminLng, adminLat] — live, updates each call
+    rideData.destinationLocation.coordinates  // [dstLng, dstLat]  — fixed
+  ];
+
+  console.log("[Route] Live route: SRC → ADMIN → DST", coordinates);
+
+  const coordsString = coordinates
+    .map(coord => coord.join(","))
+    .join(";");
+
+  // Waypoints param covers all 3 points (0=source, 1=admin, 2=destination)
+  const wpParam = "&waypoints=0;1;2";
+
+  const url =
+    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}` +
+    `?overview=full&geometries=geojson&steps=true${wpParam}&access_token=${map_token}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (requestId !== activeRouteRequestId) return;   // stale response — discard
+    if (!data.routes || !data.routes.length) {
+      console.warn("[Route] Directions API returned no routes.");
+      return;
+    }
+
+    const routeGeoJSON = data.routes[0].geometry;
+
+    // Navigation steps: 3-point route has 2 legs (src→admin, admin→dst).
+    // For turn-by-turn we use the second leg (admin → destination) since
+    // the rider is already in motion toward the destination from the admin's position.
+    let steps = [];
+    const legs = data.routes[0].legs;
+    if (legs && legs.length >= 2 && legs[1]) {
+      // leg[1] = admin → destination (the active navigation segment)
+      steps = legs[1].steps || [];
+    } else if (legs && legs[0]) {
+      // Fallback: use first leg if only one leg returned
+      steps = legs[0].steps || [];
+    }
+
+    navigationSteps = steps;
+    if (navigationSteps.length) {
+      currentStepIndex = findNearestNavigationStepIndex(navigationSteps, currentLat, currentLng);
+    }
+    lastRouteOrigin = { lat: currentLat, lng: currentLng };
+
+    const routeData = { type: "Feature", geometry: routeGeoJSON };
+    const sourceId = "dynamic-route-source";
+    const layerId = "dynamic-route-layer";
+
+    // ✅ Use setData() on existing source to avoid recreating the layer on every update
+    if (map.getSource(sourceId)) {
+      map.getSource(sourceId).setData(routeData);
+    } else {
+      map.addSource(sourceId, {
+        type: "geojson",
+        data: routeData
+      });
+
+      map.addLayer({
+        id: layerId,
+        type: "line",
+        source: sourceId,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": "#3b82f6",
+          "line-width": 5,
+          "line-opacity": 0.8
+        }
+      });
+    }
+
+    console.log("[Route] ✅ Live route drawn: SOURCE → ADMIN → DESTINATION");
+  } catch (e) {
+    console.error("[Route] Error fetching live route:", e);
+    // Don't toast on every failure (admin may be moving rapidly) — just log
+  }
 }
+
 
 let isRideModeActivated = false;
 
@@ -1243,9 +1269,9 @@ function activateRideMode() {
   // ALWAYS use admin's live location for the main route
   if (userMarkers.has(adminUserId)) {
     const adminLoc = userMarkers.get(adminUserId);
-    drawLiveRoute(adminLoc.lat, adminLoc.lng);
+    updateDynamicRoute(adminLoc.lat, adminLoc.lng);
   } else if (isAdmin && Number.isFinite(myLat) && Number.isFinite(myLng)) {
-    drawLiveRoute(myLat, myLng);
+    updateDynamicRoute(myLat, myLng);
   }
 
   console.log('[RideSynk] activateRideMode: complete');
@@ -1278,13 +1304,13 @@ function updateStatusBadge(status) {
 
 /* ── MEMBERS PANEL RENDER ───────────────────────────────────────────── */
 function renderMembersPanel() {
-  const container = document.getElementById('members-list');
-  if (!container) return;
-
   const liveCountLabel = document.getElementById("live-count-label");
-  if (liveCountLabel) {
+  if (liveCountLabel && rideData.members) {
     liveCountLabel.textContent = `${onlineUsers.size} / ${rideData.members.length} Riders Live`;
   }
+
+  const container = document.getElementById('members-list');
+  if (!container) return;
 
   // Build member data with computed distances from memberLocations
   const memberData = rideData.members.map((member) => {
@@ -1300,14 +1326,27 @@ function renderMembersPanel() {
     let status = 'waiting';
 
     if (loc) {
+      const distToDst = haversine(loc.lat, loc.lng, dstLat, dstLng);
       const distToSrc = haversine(loc.lat, loc.lng, srcLat, srcLng);
       const hasReached = distToSrc < 80 || reachedSourceUsers.has(uid);
 
-      if (hasReached || rideStarted) {
-        // After reaching source OR ride started -> show distance to destination
-        const distToDst = haversine(loc.lat, loc.lng, dstLat, dstLng);
+      if (!isOnline) {
+        status = 'offline';
         distanceM = distToDst;
-        status = hasReached ? 'reached' : 'onway';
+
+        if (hasReached || rideStarted) {
+          distanceText = distToDst < 1000
+            ? `Offline (${Math.round(distToDst)} m to dst)`
+            : `Offline (${(distToDst / 1000).toFixed(1)} km to dst)`;
+        } else {
+          distanceText = distToSrc < 1000
+            ? `Offline (${Math.round(distToSrc)} m from src)`
+            : `Offline (${(distToSrc / 1000).toFixed(1)} km from src)`;
+        }
+      } else if (hasReached || rideStarted) {
+        // After reaching source OR ride started -> show distance to destination
+        distanceM = distToDst;
+        status = hasReached && distToDst < 100 ? 'reached' : 'onway'; // fixed logical reached check
 
         if (distToDst < 100) {
           distanceText = '\ud83c\udfc1 Near destination';
@@ -1316,7 +1355,6 @@ function renderMembersPanel() {
         } else {
           distanceText = `${(distToDst / 1000).toFixed(1)} km to destination`;
         }
-        if (DEBUG_LOG) console.log('DISTANCE SWITCHED TO DESTINATION', uid);
       } else {
         // Before reaching source -> show distance to source
         distanceM = distToSrc;
@@ -1358,7 +1396,9 @@ function renderMembersPanel() {
       ? `<span class="member-badge reached-badge">\u2705 Reached</span>`
       : d.status === 'onway'
         ? `<span class="member-badge onway-badge">\ud83d\udee3\ufe0f On the way</span>`
-        : `<span class="member-badge waiting-badge">\u23f3 Waiting</span>`;
+        : d.status === 'offline'
+          ? `<span class="member-badge waiting-badge">\u26A0\uFE0F Offline</span>`
+          : `<span class="member-badge waiting-badge">\u23f3 Waiting</span>`;
 
     return `
       <div class="member-card ${d.isMemberAdmin ? 'card-admin' : ''} ${d.isMe ? 'card-me' : ''}">
@@ -1602,6 +1642,8 @@ function setupTabs() {
 }
 
 let locationAlertShown = false;
+let usingHighAccuracy = true;
+let geoRetryTimer = null;
 
 /* ── GEOLOCATION WATCH ──────────────────────────────────────────────── */
 function startGeolocation() {
@@ -1610,45 +1652,83 @@ function startGeolocation() {
     return;
   }
 
-  // Pre-check for initial prompt to ensure fast failure/success
+  // Check permission state upfront for clear user feedback
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: "geolocation" }).then(result => {
+      console.log('[RideSynk] Geolocation permission state:', result.state);
+      if (result.state === 'denied') {
+        toast("Location access denied. Please allow location permissions in your browser settings.", "error");
+        locationAlertShown = true;
+      }
+    }).catch(() => {/* ignore — permissions API not supported in some browsers */});
+  }
+
+  console.log('[RideSynk] Requesting initial location fix...');
+
+  // Step 1: Get an immediate fix quickly (high accuracy, 10s timeout)
   navigator.geolocation.getCurrentPosition(
     (pos) => {
-      // Success! We can reset the alert shown flag.
       locationAlertShown = false;
-      initWatch();
+      console.log('[RideSynk] ✅ Initial position acquired. Accuracy:', pos.coords.accuracy, 'm');
+      startWatch(true);
     },
     (err) => {
-      // Execute the watch anyway so it recovers when they turn GPS back on
-      initWatch();
+      console.warn('[RideSynk] ⚠️ Initial getCurrentPosition failed:', err.code, err.message);
+      if (err.code === 1 /* PERMISSION_DENIED */) {
+        if (!locationAlertShown) {
+          toast("Location access denied. Please allow location in your browser settings.", "error");
+          locationAlertShown = true;
+        }
+        return; // Cannot recover from permission denial
+      }
+      // Timeout or position unavailable → fallback to low accuracy watch
+      console.log('[RideSynk] Falling back to low-accuracy watch...');
+      startWatch(false);
     },
-    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
   );
 }
 
-function initWatch() {
+/* ── START CONTINUOUS WATCH ─────────────────────────────────────────── */
+function startWatch(highAccuracy) {
   if (watchId !== null) return; // Prevent double watching
+
+  usingHighAccuracy = highAccuracy;
+  console.log(`[RideSynk] Starting watchPosition. highAccuracy=${highAccuracy}`);
 
   watchId = navigator.geolocation.watchPosition(
     pos => {
-      // If we get a position cleanly, reset the alert flag so we can warn again if it drops
+      // Clear any pending retry timer
+      if (geoRetryTimer) { clearTimeout(geoRetryTimer); geoRetryTimer = null; }
+
       locationAlertShown = false;
-      const { latitude: lat, longitude: lng } = pos.coords;
+      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+
+      console.log(`[RideSynk] 📍 Location update: lat=${lat.toFixed(5)}, lng=${lng.toFixed(5)}, accuracy=${Math.round(accuracy)}m`);
+
+      // FIXED: Previously `accuracy > 30` was discarding ALL desktop/WiFi/indoor locations.
+      // Now we only discard clearly absurd readings (>5km accuracy = GPS not working at all).
+      if (accuracy > 5000) {
+        console.warn('[RideSynk] Ignored extremely inaccurate reading:', accuracy, 'm');
+        return;
+      }
+
       myLat = lat;
       myLng = lng;
 
       const now = Date.now();
-      if (now - lastEmitTime < EMIT_THROTTLE) return;
-      lastEmitTime = now;
-
-      socket.emit("sendLocation", {
-        rideId: rideData._id,
-        userId: userid,
-        lat,
-        lng,
-        name: myName,
-        isAdmin: isAdmin
-      });
-      if (DEBUG_LOG) console.log("LOCATION SENT", { lat, lng, rideId: rideData._id });
+      if (now - lastEmitTime >= EMIT_THROTTLE) {
+        lastEmitTime = now;
+        console.log('[RideSynk] 📡 Emitting sendLocation...');
+        socket.emit("sendLocation", {
+          rideId: rideData._id,
+          userId: userid,
+          lat,
+          lng,
+          name: myName,
+          isAdmin: isAdmin
+        });
+      }
 
       // Update own marker on map
       upsertMarker(userid, lat, lng, myName, isAdmin);
@@ -1665,58 +1745,120 @@ function initWatch() {
 
       if (rideStarted) {
         updateNavigation(lat, lng);
-        // Route updates for admin are now purely handled by receiving adminLocationUpdated
       }
 
-      // Always re-render members panel (throttled to prevent DOM thrashing)
       throttledRenderMembersPanel();
     },
     err => {
       let errorMsg = "Location error.";
-      if (err.code === 1) {
+      if (err.code === 1 /* PERMISSION_DENIED */) {
         errorMsg = "Location access denied. Please allow location permissions in your browser settings.";
-      } else if (err.code === 2) {
-        errorMsg = "Device location is turned off. Please turn on your device's Location / GPS to continue.";
-        if (!locationAlertShown) {
-          alert("Your browser has location permission, but your device GPS is turned OFF. Please turn on Location setting in your device menu to use live tracking.");
-          locationAlertShown = true;
+      } else if (err.code === 2 /* POSITION_UNAVAILABLE */) {
+        errorMsg = "Your device GPS is unavailable. Please check your location settings.";
+      } else if (err.code === 3 /* TIMEOUT */) {
+        if (usingHighAccuracy) {
+          // Retry with low accuracy fallback instead of giving up
+          console.log('[RideSynk] watchPosition timed out. Retrying with low accuracy...');
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+          startWatch(false);
+          return;
         }
-      } else if (err.code === 3) {
-        errorMsg = "GPS request timed out. Please ensure your location services are enabled.";
-        if (!locationAlertShown) {
-          alert("Getting your location timed out. Please make sure your device GPS is turned ON and you have clear view of the sky.");
-          locationAlertShown = true;
+        errorMsg = "Getting your location timed out. Please ensure GPS or Location is enabled on your device.";
+        // Auto-retry in 5s
+        if (!geoRetryTimer) {
+          geoRetryTimer = setTimeout(() => {
+            console.log('[RideSynk] Auto-retrying geolocation after timeout...');
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+            geoRetryTimer = null;
+            startWatch(false);
+          }, 5000);
         }
       }
 
-      toast(errorMsg, "error");
+      console.error('[RideSynk] ❌ watchPosition error:', err.code, err.message);
+
+      if (!locationAlertShown) {
+        toast(errorMsg, "error");
+        locationAlertShown = true;
+      }
     },
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+    { enableHighAccuracy: highAccuracy, maximumAge: 10000, timeout: 30000 }
   );
 }
 
 /* ── SOCKET EVENTS ──────────────────────────────────────────────────── */
 socket.on("connect", () => {
+  console.log('[RideSynk] Socket connected:', socket.id);
   // Include userId + name so server can broadcast memberJoined to others
   socket.emit("joinRide", { rideId: rideData._id, userId: userid, name: myName });
+  // Hide any "offline" connection indicator
+  const liveLabel = document.getElementById('live-count-label');
+  if (liveLabel && liveLabel.dataset.connLost) {
+    delete liveLabel.dataset.connLost;
+    liveLabel.style.color = '';
+  }
+});
+
+// FIX: When socket reconnects after a drop, the server assigns a new socket.id.
+// We must re-join the ride room AND clear stale local state (phantom online users)
+// because the server already removed us from the room on disconnect.
+socket.on("reconnect", (attempt) => {
+  console.log(`[RideSynk] Reconnected after ${attempt} attempt(s). Re-syncing state...`);
+
+  // Clear stale online user markers — server will re-send initialMembers after joinRide
+  onlineUsers.clear();
+  // Re-add self optimistically
+  onlineUsers.add(userid);
+
+  // joinRide is re-emitted by the "connect" handler above (fires on reconnect too)
+  // Force a fresh panel render to clear phantom members
+  if (_membersPanelTimer) { clearTimeout(_membersPanelTimer); _membersPanelTimer = null; }
+  renderMembersPanel();
+});
+
+socket.on("disconnect", (reason) => {
+  console.warn('[RideSynk] Socket disconnected:', reason);
+  // Show connection lost in the live count label
+  const liveLabel = document.getElementById('live-count-label');
+  if (liveLabel) {
+    liveLabel.dataset.connLost = '1';
+    liveLabel.style.color = '#ef4444';
+    liveLabel.textContent = 'Connection lost...';
+  }
+});
+
+socket.on("connect_error", (err) => {
+  console.warn('[RideSynk] Socket connect error:', err.message);
 });
 
 socket.on("initialMembers", (members) => {
   members.forEach(user => {
     const uid = user.userId.toString();
-    
-    // Always track user in online users
-    onlineUsers.add(uid);
+
+    // Only track user in online users if they are actually online
+    if (user.isOnline) {
+      onlineUsers.add(uid);
+    }
 
     // Render if we have location
     if (user.lat !== null && user.lng !== null) {
       upsertMarker(uid, user.lat, user.lng, user.name, user.isAdmin);
       memberLocations.set(uid, { lat: user.lat, lng: user.lng, updatedAt: Date.now() });
-      updateDottedPath(uid, user.lat, user.lng);
+
+      if (!rideStarted) {
+        updateDottedPath(uid, user.lat, user.lng);
+      }
 
       if (uid === adminUserId || user.isAdmin) {
         adminLiveLocation = { lat: user.lat, lng: user.lng };
-        // Route updates now handled by strict logic in adminLocationUpdated or checkAndActivateRideStatus
+        // FIX: late joiners on an already-started ride need the dynamic route drawn immediately.
+        // Previously adminLiveLocation was set but updateDynamicRoute was never called here,
+        // so late joiners saw no route until the admin moved again.
+        if (rideStarted && map.loaded()) {
+          updateDynamicRoute(user.lat, user.lng);
+        }
       }
     }
   });
@@ -1749,7 +1891,11 @@ socket.on("receiveLocation", ({ userId, lat, lng, name, isAdmin: senderIsAdmin }
   // Track location for members panel distances
   memberLocations.set(uid, { lat, lng, updatedAt: Date.now() });
   onlineUsers.add(uid);
-  updateDottedPath(uid, lat, lng);
+
+  // Only draw dotted paths BEFORE ride starts
+  if (!rideStarted) {
+    updateDottedPath(uid, lat, lng);
+  }
 
   // Just track admin location for late updates, route drawing is handled by adminLocationUpdated
   if (uid === adminUserId || senderIsAdmin) {
@@ -1809,7 +1955,12 @@ socket.on("rideStatusUpdate", ({ status }) => {
   console.log('[RideSynk] rideStatusUpdate received:', status);
   if (status === "started" || status === "active") {
     rideData.status = "active";    // sync local state
-    waitForMapThenActivate();      // safe even if map not loaded yet
+
+    // Guard: rideStarted socket event already calls waitForMapThenActivate.
+    // Only activate from here if rideStarted event wasn't received (e.g. late joiner refresh).
+    if (!isRideModeActivated) {
+      waitForMapThenActivate();
+    }
 
     showNotif({
       type: 'start',
@@ -2089,6 +2240,14 @@ function waitForMapThenActivate() {
 }
 
 /* ── MAP LOAD ───────────────────────────────────────────────────────── */
+
+// ✅ FIX: Start geolocation EARLY — don't wait for the map to finish loading.
+// The Geolocation API is completely independent of Mapbox.
+// Starting it early means we often have a location fix ready BEFORE the map loads.
+if (navigator.geolocation) {
+  startGeolocation();
+}
+
 map.on("load", () => {
   console.log('[RideSynk] Map loaded');
 
@@ -2103,12 +2262,10 @@ map.on("load", () => {
   addStaticPins();
 
   if (!rideStarted) {
-    renderStaticRoute();
+    drawStaticRoute();
   } else {
     // wait for admin location updates
   }
-
-  startGeolocation();
 
   // Check & sync ride status — activates nav if already started
   checkAndActivateRideStatus();

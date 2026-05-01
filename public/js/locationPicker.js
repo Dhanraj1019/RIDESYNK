@@ -10,18 +10,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const addressText = document.getElementById('lp-address-text');
   const mapContainer = document.getElementById('lp-map');
   const marker = document.getElementById('lp-marker');
-  
+
   let map = null;
   let currentMode = null; // 'sorce' | 'destination'
   let currentCenter = null; // [lng, lat]
   let currentAddress = "";
-  
+
   let reverseGeocodeTimeout;
 
   // Initialize Mapbox map
   function initMap() {
     if (map) return;
-    
+
     // Mapbox Token is assumed to be defined in global scope `map_token` setup in create_ride.ejs
     mapboxgl.accessToken = typeof MAPBOX_TOKEN !== 'undefined' ? MAPBOX_TOKEN : (typeof map_token !== 'undefined' ? map_token : '');
 
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         map.setZoom(14);
       }, () => {
         // failed to get location, keep default
-      });
+      }, { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 });
     }
 
     map.on('move', () => {
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&limit=1`;
       const res = await fetch(url);
       const data = await res.json();
-      
+
       if (data.features && data.features.length > 0) {
         currentAddress = data.features[0].place_name;
         addressText.textContent = currentAddress;
@@ -88,12 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
     currentMode = mode;
     modal.classList.remove('hide');
     marker.className = `lp-marker-center mode-${mode}`;
-    
+
     // Defer initialization to ensure modal is visible for proper canvas sizing
     setTimeout(() => {
       initMap();
       map.resize();
-      
+
       // trigger reverse geocode for current center
       const center = map.getCenter();
       currentCenter = [center.lng, center.lat];
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* Listeners */
-  
+
   // Open buttons
   document.querySelectorAll('.pick-on-map-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
           alert("Location access denied or unavailable. Please move map manually.");
           debouncedReverseGeocode(currentCenter[0], currentCenter[1]); // revert text
         },
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
       );
     } else {
       alert("Geolocation is not supported by your browser");
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Confirm Location
   confirmBtn.addEventListener('click', () => {
     if (!currentCenter || !currentMode) return;
-    
+
     // Find the input elements
     const textInput = document.querySelector(`input[name="ride[${currentMode}]"]`);
     if (!textInput) {
@@ -151,17 +151,17 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal();
       return;
     }
-    
+
     // Find the hidden input
     const hiddenName = currentMode === 'sorce' ? 'ride[sorcelocation]' : 'ride[destinationlocation]';
     let hiddenInput = document.querySelector(`input[name="${hiddenName}"]`);
-    
+
     // If hidden input doesn't exist yet, we inject it via JS since it's dynamically created by attachSearch in create_ride.js
     if (!hiddenInput) {
-       hiddenInput = document.createElement('input');
-       hiddenInput.type = 'hidden';
-       hiddenInput.name = hiddenName;
-       textInput.parentElement.appendChild(hiddenInput);
+      hiddenInput = document.createElement('input');
+      hiddenInput.type = 'hidden';
+      hiddenInput.name = hiddenName;
+      textInput.parentElement.appendChild(hiddenInput);
     }
 
     // Set values

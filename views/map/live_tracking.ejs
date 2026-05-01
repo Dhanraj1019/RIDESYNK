@@ -60,10 +60,12 @@
         if (currentMember) {
           const fn = (currentMember.firstname || '').trim();
           const ln = (currentMember.lastname  || '').trim();
-          if (fn || ln) {
-            avatarInitials = ((fn[0] || '') + (ln[0] || '')).toUpperCase() || (fn.substring(0,2).toUpperCase());
+          const fullName = (fn + ' ' + ln).trim() || currentMember.username || 'U';
+          const parts = fullName.split(/\s+/);
+          if (parts.length === 1) {
+            avatarInitials = parts[0].substring(0, 2).toUpperCase();
           } else {
-            avatarInitials = (currentMember.username || 'U').substring(0, 2).toUpperCase();
+            avatarInitials = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
           }
         }
       %>

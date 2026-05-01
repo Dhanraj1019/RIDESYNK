@@ -46,8 +46,7 @@ const liveUsers = new Map();
 // rideId → Map of userId strings to their latest location payload
 const activeLocations = new Map();
 
-// rideId → cached totalMembers count (avoids DB query on every location emit)
-const rideTotalCache = new Map();
+// (rideTotalCache removed - liveCount handled by client)
 
 // rideId → { started: boolean, status: string }
 const rideStatusMap = new Map();
@@ -57,6 +56,47 @@ const adminLocationMap = new Map();
 
 // socketId:eventName -> lightweight abuse bucket
 const socketEventBuckets = new Map();
+
+// Idle TTL for abandoned rides (cleanup leak)
+const RIDE_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
+const rideLastActive = new Map();
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [rid, ts] of rideLastActive.entries()) {
+        if (now - ts > RIDE_TTL_MS) {
+            liveUsers.delete(rid);
+            activeLocations.delete(rid);
+            rideRooms.delete(rid);
+            rideStatusMap.delete(rid);
+            adminLocationMap.delete(rid);
+            rideLastActive.delete(rid);
+            console.log(`[socket] TTL cleanup abandoned ride ${rid}`);
+        }
+    }
+}, 1000 * 60 * 60);
+
+// ── Stale-location heartbeat ────────────────────────────────────────────
+// Detects users who silently dropped (network timeout, background tab killed)
+// without a clean WebSocket disconnect. If a user hasn't sent a location
+// update in 45s, broadcast memberOffline for them so all clients can
+// remove them from the "live" count and members panel.
+const STALE_LOCATION_MS = 45000; // 45 seconds
+setInterval(() => {
+    const now = Date.now();
+    for (const [rid, locMap] of activeLocations.entries()) {
+        for (const [uid, payload] of locMap.entries()) {
+            const updatedAt = payload._updatedAt || 0;
+            if (updatedAt > 0 && now - updatedAt > STALE_LOCATION_MS) {
+                // User has gone stale — broadcast offline to this ride room
+                getLiveSet(rid).delete(uid);
+                locMap.delete(uid);
+                io.to(rid).emit("memberOffline", { userId: uid });
+                if (SOCKET_DEBUG) console.log(`[socket] Stale location for uid=${uid} in ride=${rid} — marked offline`);
+            }
+        }
+    }
+}, 15000); // Check every 15 seconds
 
 // ── Helper: get or create a ride room set ───────────────────────────────
 function getRideRoom(rideId) {
@@ -82,24 +122,7 @@ function getLiveSet(rideId) {
     return liveUsers.get(rideId);
 }
 
-// ── Helper: broadcast live count to all sockets in a ride room ─────────
-// Uses in-memory cache to avoid DB query on every location emit
-async function broadcastLiveCount(io, rideId) {
-    try {
-        let total = rideTotalCache.get(rideId);
-        if (total === undefined) {
-            const ride = await Ride.findById(rideId).select("totalMembers").lean();
-            total = ride ? (ride.totalMembers || 0) : 0;
-            rideTotalCache.set(rideId, total);
-        }
-        const count = getLiveSet(rideId).size;
-        io.to(rideId).emit("liveCount", { count, total });
-    } catch (_) {
-        // Non-critical — don't crash on a count broadcast failure
-        const count = getLiveSet(rideId).size;
-        io.to(rideId).emit("liveCount", { count, total: count });
-    }
-}
+// (broadcastLiveCount removed - liveCount handled by client)
 
 // ── Helper: sanitize a string id ───────────────────────────────────────
 function safeId(val) {
@@ -164,14 +187,14 @@ module.exports = function registerSocketHandlers(io) {
                     socketUserId = uid;
                     socketUserMap.set(socket.id, {
                         userId: uid,
-                        name:   escapeHtml(String(name || "A rider")),
+                        name:   String(name || "A rider"),
                         rideId: rid
                     });
 
                     // Notify OTHER members someone joined (not the joiner themselves)
                     socket.to(rid).emit("memberJoined", {
                         userId: uid,
-                        name:   escapeHtml(String(name || "A rider"))
+                        name:   String(name || "A rider")
                     });
                 }
 
@@ -188,6 +211,7 @@ module.exports = function registerSocketHandlers(io) {
                     const uidStr = m.userId ? m.userId._id.toString() : "";
                     const loc = activeLocs.get(uidStr);
                     const isAdm = m.role === "admin";
+                    const isOnline = getLiveSet(rid).has(uidStr);
                     let memberName = "Rider";
                     if (m.userId) {
                         const f = (m.userId.firstname || "").trim();
@@ -196,10 +220,11 @@ module.exports = function registerSocketHandlers(io) {
                     }
                     return {
                         userId: uidStr,
-                        name: escapeHtml(memberName),
+                        name: memberName,
                         lat: loc ? loc.lat : null,
                         lng: loc ? loc.lng : null,
-                        isAdmin: isAdm
+                        isAdmin: isAdm,
+                        isOnline: isOnline
                     };
                 }).filter(m => m.userId !== "");
 
@@ -223,8 +248,6 @@ module.exports = function registerSocketHandlers(io) {
                 if (activeSOS.length > 0) {
                     socket.emit("activeSOS", activeSOS.map(toSosPayload));
                 }
-
-                await broadcastLiveCount(io, rid);
             } catch (err) {
                 console.error("[socket] joinRide error:", err.message);
             }
@@ -249,6 +272,7 @@ module.exports = function registerSocketHandlers(io) {
             const now = Date.now();
             if (now - lastLocationEmitAt < LOCATION_THROTTLE_MS) return;
             lastLocationEmitAt = now;
+            rideLastActive.set(rid, now);
 
             // Track this userId as live for this ride
             socketUserId = uid;
@@ -258,8 +282,9 @@ module.exports = function registerSocketHandlers(io) {
                 userId: uid,
                 lat: parsedLat,
                 lng: parsedLng,
-                name: escapeHtml(name),
-                isAdmin: Boolean(isAdmin)
+                name: String(name || "Rider"),
+                isAdmin: Boolean(isAdmin),
+                _updatedAt: now   // used by stale-location heartbeat to detect silent drops
             };
             getActiveLocations(rid).set(uid, payload);
 
@@ -287,8 +312,7 @@ module.exports = function registerSocketHandlers(io) {
                 });
             }
 
-            // Update live count (fire-and-forget)
-            broadcastLiveCount(io, rid).catch(() => { });
+            // Live count handled by client
         });
 
         // ── rideStarted ─────────────────────────────────────────────────
@@ -349,9 +373,9 @@ module.exports = function registerSocketHandlers(io) {
                 liveUsers.delete(rid);
                 activeLocations.delete(rid);
                 rideRooms.delete(rid);
-                rideTotalCache.delete(rid);
                 rideStatusMap.delete(rid);
                 adminLocationMap.delete(rid);
+                rideLastActive.delete(rid);
             } catch (err) {
                 console.error("[socket] rideEnded error:", err.message);
             }
@@ -378,11 +402,11 @@ module.exports = function registerSocketHandlers(io) {
                 if (!rawText) return;                    // block empty
                 if (rawText.length > 500) return;        // block over-length (matches client limit)
 
-                const safeText = escapeHtml(rawText);
+                const safeText = rawText;
                 const safeTime = String(time || new Date().toLocaleTimeString("en-US", {
                     hour: "2-digit", minute: "2-digit"
                 }));
-                const safeName = escapeHtml(String(name || "Rider"));
+                const safeName = String(name || "Rider");
 
                 // Save to DB first — chatController.saveMessage uses exact schema field names
                 // message.js: { rideId, senderId, message } — saveMessage maps text → message
@@ -464,8 +488,6 @@ module.exports = function registerSocketHandlers(io) {
                             getActiveLocations(rid).delete(socketUserId);
                             io.to(rid).emit("userLeft", { userId: socketUserId });
                         }
-
-                        await broadcastLiveCount(io, rid);
                     } catch (err) {
                         console.error("[socket] disconnect cleanup error:", err.message);
                     }
