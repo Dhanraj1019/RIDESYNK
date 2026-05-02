@@ -70,12 +70,15 @@
 
 .lp-bottom-panel {
   padding: 20px;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  /* padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); */
   background: white;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
   z-index: 10;
   display: flex;
   flex-direction: column;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
   gap: 12px;
 }
 
