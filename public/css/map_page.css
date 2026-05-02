@@ -1014,6 +1014,12 @@ input {
   animation: sosPulse 1s ease-in-out infinite;
 }
 
+.offline-marker {
+  filter: grayscale(1) brightness(0.8);
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
 @keyframes sosPulse {
   0% {
     transform: scale(1);

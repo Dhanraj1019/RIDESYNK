@@ -667,7 +667,11 @@ async function drawStaticRoute() {
     const data = await res.json();
 
     // FIX: strictly forbid overlapping if ride started during fetch
-    if (rideStarted) return;
+    if (rideStarted) {
+      removeLayerSafe("static-route-layer");
+      removeSourceSafe("static-route-source");
+      return;
+    }
 
     if (!data.routes || !data.routes.length) {
       toast("Could not load route.", "error");
@@ -907,6 +911,13 @@ function upsertMarker(userId, lat, lng, name, isAdminUser) {
 
     userMarkers.set(userId, { marker, lat, lng, name, isAdminUser });
   }
+
+  // Remove offline state if present
+  const data = userMarkers.get(userId);
+  if (data && data.marker) {
+    const el = data.marker.getElement ? data.marker.getElement() : data.marker;
+    if (el) el.classList.remove("offline-marker");
+  }
 }
 
 function animateMarker(userId, targetLat, targetLng) {
@@ -1086,7 +1097,7 @@ function shouldUpdateRoute(lat, lng) {
       lastDynamicRouteUpdateLocation.lat,
       lastDynamicRouteUpdateLocation.lng
     );
-    if (movedDistance < 100) return false;
+    if (movedDistance < 20) return false;
   }
 
   lastDynamicRouteUpdateTime = now;
@@ -2019,9 +2030,11 @@ document.addEventListener("click", e => {
 socket.on("userLeft", ({ userId }) => {
   const uid = userId.toString();
   const data = userMarkers.get(uid);
-  if (data) {
-    data.marker.remove();
-    userMarkers.delete(uid);
+  if (data && data.marker) {
+    // DO NOT remove marker on disconnect/userLeft
+    // instead, dim it and keep it at last known position
+    const el = data.marker.getElement ? data.marker.getElement() : data.marker;
+    if (el) el.classList.add("offline-marker");
     removeDottedPathForUser(uid);
   }
   // Mark offline in onlineUsers (keeps memberLocations for last-known distance)
@@ -2033,7 +2046,15 @@ socket.on("userLeft", ({ userId }) => {
 
 socket.on("memberOffline", ({ userId }) => {
   if (!userId) return;
-  onlineUsers.delete(userId.toString());
+  const uid = userId.toString();
+  onlineUsers.delete(uid);
+
+  const data = userMarkers.get(uid);
+  if (data && data.marker) {
+    const el = data.marker.getElement ? data.marker.getElement() : data.marker;
+    if (el) el.classList.add("offline-marker");
+  }
+
   throttledRenderMembersPanel();
   // Silent — no toast for offline to avoid spam
 });

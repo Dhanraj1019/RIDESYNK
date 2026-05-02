@@ -142,6 +142,7 @@ module.exports.createrideform = (req, res) => {
 
 
 module.exports.createride = async (req, res) => {
+    console.time("createRide_Total");
     try {
         const { ride = {} } = req.body;
         const date = String(ride.date || '').trim();
@@ -183,12 +184,13 @@ module.exports.createride = async (req, res) => {
             return res.status(400).json({ error: "Invalid location coordinates" });
         }
 
-        const distanceKm = await calculateRideDistanceKm({
-            sourceCoords: sourceCoordinates,
-            destinationCoords: destinationCoordinates,
-            sourceAddress: ride.sorce,
-            destinationAddress: ride.destination
-        });
+        // ⚡ OPTIMIZATION: Immediate Haversine approximation for initial save
+        // This avoids waiting for Mapbox API in the critical path.
+        const estDistanceMeters = haversineMeters(
+            sourceCoordinates[1], sourceCoordinates[0], 
+            destinationCoordinates[1], destinationCoordinates[0]
+        );
+        const estDistanceKm = Math.round((estDistanceMeters / 1000) * 100) / 100;
 
         const newRide = new Ride({
             adminId: req.user._id,
@@ -197,7 +199,7 @@ module.exports.createride = async (req, res) => {
             time,
             sorce: ride.sorce,
             destination: ride.destination,
-            distance: Number.isFinite(distanceKm) && distanceKm >= 0 ? distanceKm : 0,
+            distance: estDistanceKm, // Initial estimate
             sorceLocation: {
                 type: 'Point',
                 coordinates: sourceCoordinates
@@ -207,12 +209,40 @@ module.exports.createride = async (req, res) => {
                 coordinates: destinationCoordinates
             }
         });
-        // console.log(newRide);
+
+        console.time("createRide_DBSave");
         const data = await newRide.save();
         await RideMember.create({ rideId: data._id, userId: req.user._id, role: "admin" });
+        console.timeEnd("createRide_DBSave");
+
         req.flash("success", "ride created...!");
-        return res.redirect(`/ridesynk/rideroom/${data._id.toString()}`);
+        
+        // 🚀 FAST RESPONSE: Redirect user immediately
+        res.redirect(`/ridesynk/rideroom/${data._id.toString()}`);
+        
+        // 🧵 BACKGROUND: Refine distance with Mapbox in the background
+        setImmediate(async () => {
+            try {
+                const preciseDistanceKm = await calculateRideDistanceKm({
+                    sourceCoords: sourceCoordinates,
+                    destinationCoords: destinationCoordinates,
+                    sourceAddress: ride.sorce,
+                    destinationAddress: ride.destination
+                });
+                
+                if (preciseDistanceKm > 0) {
+                    await Ride.findByIdAndUpdate(data._id, { distance: preciseDistanceKm });
+                    // console.log(`[perf] Background distance update for ride ${data._id}: ${preciseDistanceKm}km`);
+                }
+            } catch (bgErr) {
+                console.error('[perf] Background distance calculation failed:', bgErr.message);
+            }
+        });
+
+        console.timeEnd("createRide_Total");
+
     } catch (error) {
+        console.timeEnd("createRide_Total");
         console.error('Create ride error:', error);
         return res.status(400).json({ error: 'Invalid ride data' });
     }

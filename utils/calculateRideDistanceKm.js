@@ -96,11 +96,21 @@ module.exports.calculateRideDistanceKm = async ({
 
         if ((!source || !destination) && token) {
             const geocodingClient = mbxGeocoding({ accessToken: token });
+            const tasks = [];
+            
             if (!source) {
-                source = await geocodeAddress(sourceAddress, geocodingClient);
+                tasks.push(geocodeAddress(sourceAddress, geocodingClient).then(res => source = res));
             }
             if (!destination) {
-                destination = await geocodeAddress(destinationAddress, geocodingClient);
+                tasks.push(geocodeAddress(destinationAddress, geocodingClient).then(res => destination = res));
+            }
+
+            if (tasks.length > 0) {
+                await withTimeout(
+                    Promise.all(tasks),
+                    MAPBOX_TIMEOUT_MS,
+                    "Geocoding parallel timeout"
+                ).catch(err => console.error("[geocoding] Parallel error:", err.message));
             }
         }
 

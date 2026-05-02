@@ -44,6 +44,7 @@ const { cacheMiddleware } = require("./utils/cache.js");
 const {
     basicRateLimit,
     getCachedUser,
+    invalidateCachedUser,
     requestTimingLogger,
     setCachedUser
 } = require("./utils/performance.js");
@@ -251,11 +252,27 @@ app.get('/auth/google/callback',
         failureMessage: true,
         keepSessionInfo: true
     }),
-    (req, res) => {
+    async (req, res) => {
         if (req.session && req.session.redirectUrl) {
             const redirect = req.session.redirectUrl;
             delete req.session.redirectUrl;
             return res.redirect(redirect);
+        }
+
+        // 🔥 RECOVERY LOGIC for Google Login
+        try {
+            const user = await User.findById(req.user._id);
+            if (user && (user.status === "pending_delete" || user.isDeleted === true)) {
+                user.status = "active";
+                user.isDeleted = false;
+                user.deletedAt = null;
+                user.deleteAfter = null;
+                await user.save();
+                invalidateCachedUser(user._id);
+                req.flash("success", "Your account has been restored successfully 🎉");
+            }
+        } catch (err) {
+            console.error("[google-recovery] Error restoring account:", err);
         }
 
         // Check if the account was created in the last 30 seconds (meaning this is their first signup via Google)

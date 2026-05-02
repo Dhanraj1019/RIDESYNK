@@ -76,27 +76,6 @@ setInterval(() => {
     }
 }, 1000 * 60 * 60);
 
-// ── Stale-location heartbeat ────────────────────────────────────────────
-// Detects users who silently dropped (network timeout, background tab killed)
-// without a clean WebSocket disconnect. If a user hasn't sent a location
-// update in 45s, broadcast memberOffline for them so all clients can
-// remove them from the "live" count and members panel.
-const STALE_LOCATION_MS = 45000; // 45 seconds
-setInterval(() => {
-    const now = Date.now();
-    for (const [rid, locMap] of activeLocations.entries()) {
-        for (const [uid, payload] of locMap.entries()) {
-            const updatedAt = payload._updatedAt || 0;
-            if (updatedAt > 0 && now - updatedAt > STALE_LOCATION_MS) {
-                // User has gone stale — broadcast offline to this ride room
-                getLiveSet(rid).delete(uid);
-                locMap.delete(uid);
-                io.to(rid).emit("memberOffline", { userId: uid });
-                if (SOCKET_DEBUG) console.log(`[socket] Stale location for uid=${uid} in ride=${rid} — marked offline`);
-            }
-        }
-    }
-}, 15000); // Check every 15 seconds
 
 // ── Helper: get or create a ride room set ───────────────────────────────
 function getRideRoom(rideId) {
@@ -162,6 +141,28 @@ module.exports = function registerSocketHandlers(io) {
     // socketId → { userId, name, rideId }
     // Declared OUTSIDE io.on('connection') so it persists across all connections
     const socketUserMap = new Map();
+
+    // ── Stale-location heartbeat ────────────────────────────────────────────
+    // Detects users who silently dropped (network timeout, background tab killed)
+    // without a clean WebSocket disconnect. If a user hasn't sent a location
+    // update in 45s, broadcast memberOffline for them so all clients can
+    // remove them from the "live" count and members panel.
+    const STALE_LOCATION_MS = 45000; // 45 seconds
+    setInterval(() => {
+        const now = Date.now();
+        for (const [rid, locMap] of activeLocations.entries()) {
+            for (const [uid, payload] of locMap.entries()) {
+                const updatedAt = payload._updatedAt || 0;
+                if (updatedAt > 0 && now - updatedAt > STALE_LOCATION_MS) {
+                    // User has gone stale — broadcast offline to this ride room
+                    getLiveSet(rid).delete(uid);
+                    locMap.delete(uid);
+                    io.to(rid).emit("memberOffline", { userId: uid });
+                    if (SOCKET_DEBUG) console.log(`[socket] Stale location for uid=${uid} in ride=${rid} — marked offline`);
+                }
+            }
+        }
+    }, 15000); // Check every 15 seconds
 
     io.on("connection", (socket) => {
         // Track which rideIds this socket has joined (for cleanup on disconnect)
@@ -485,8 +486,10 @@ module.exports = function registerSocketHandlers(io) {
                         // Remove user from live set, active locations, and broadcast their departure
                         if (socketUserId) {
                             getLiveSet(rid).delete(socketUserId);
-                            getActiveLocations(rid).delete(socketUserId);
-                            io.to(rid).emit("userLeft", { userId: socketUserId });
+                            // We do NOT delete from activeLocations immediately on disconnect 
+                            // to allow markers to persist at last known position.
+                            // The STALE_LOCATION_MS heartbeat will handle eventual cleanup if they don't reconnect.
+                            // io.to(rid).emit("userLeft", { userId: socketUserId }); // REMOVED to keep markers
                         }
                     } catch (err) {
                         console.error("[socket] disconnect cleanup error:", err.message);

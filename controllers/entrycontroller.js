@@ -16,19 +16,23 @@ module.exports.login = async (req, res) => {
         return res.redirect("/ridesynk/entry/signup");
     }
 
-    // 🔥 RECOVERY LOGIC
-    if (user.status === "pending_delete" || user.isDeleted === true) {
-
-        await User.findByIdAndUpdate(user._id, {
-            status: "active",
-            isDeleted: false,
-            deletedAt: null,
-            deleteAfter: null
-        });
-        invalidateCachedUser(user._id);
-
-        req.flash("success", "Your account has been restored successfully 🎉");
-    } else {
+    // 🔥 RECOVERY LOGIC - Robust restore using .save()
+    try {
+        const freshUser = await User.findById(user._id);
+        if (freshUser && (freshUser.status === "pending_delete" || freshUser.isDeleted === true)) {
+            freshUser.status = "active";
+            freshUser.isDeleted = false;
+            freshUser.deletedAt = null;
+            freshUser.deleteAfter = null;
+            await freshUser.save();
+            
+            invalidateCachedUser(user._id);
+            req.flash("success", "Your account has been restored successfully 🎉");
+        } else {
+            req.flash("success", "You logged in successfully");
+        }
+    } catch (err) {
+        console.error("[recovery] Error restoring account:", err);
         req.flash("success", "You logged in successfully");
     }
 
