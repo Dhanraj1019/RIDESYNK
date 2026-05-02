@@ -27,8 +27,13 @@ module.exports.update=async (req,res,next)=>{
         
         req.flash("success", "Profile updated successfully!");
         return res.redirect("/ridesynk/settings");
-    } catch (e) {
-        req.flash("error", "Could not update profile");
+    } catch (err) {
+        if (err.code === 11000) {
+            const field = Object.keys(err.keyPattern || {})[0] || "field";
+            req.flash("error", `This ${field} is already in use by another account.`);
+        } else {
+            req.flash("error", "Could not update profile. Please check your inputs.");
+        }
         return res.redirect("/ridesynk/settings");
     }
 };

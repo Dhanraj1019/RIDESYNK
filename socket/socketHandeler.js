@@ -188,14 +188,14 @@ module.exports = function registerSocketHandlers(io) {
                     socketUserId = uid;
                     socketUserMap.set(socket.id, {
                         userId: uid,
-                        name:   String(name || "A rider"),
+                        name: String(name || "A rider"),
                         rideId: rid
                     });
 
                     // Notify OTHER members someone joined (not the joiner themselves)
                     socket.to(rid).emit("memberJoined", {
                         userId: uid,
-                        name:   String(name || "A rider")
+                        name: String(name || "A rider")
                     });
                 }
 

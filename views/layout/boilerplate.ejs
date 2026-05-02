@@ -135,8 +135,9 @@
 
         <!-- //============= -->
         <script>
-            window.addEventListener("load", function () {
-                document.querySelector(".loader_container").style.display = "none";
+            document.addEventListener("DOMContentLoaded", function () {
+                const loader = document.querySelector(".loader_container");
+                if (loader) loader.style.display = "none";
             });
         </script>
         <!-- //================ -->

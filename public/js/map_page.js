@@ -1671,7 +1671,7 @@ function startGeolocation() {
         toast("Location access denied. Please allow location permissions in your browser settings.", "error");
         locationAlertShown = true;
       }
-    }).catch(() => {/* ignore — permissions API not supported in some browsers */});
+    }).catch(() => {/* ignore — permissions API not supported in some browsers */ });
   }
 
   console.log('[RideSynk] Requesting initial location fix...');

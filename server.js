@@ -259,17 +259,20 @@ app.get('/auth/google/callback',
             return res.redirect(redirect);
         }
 
-        // 🔥 RECOVERY LOGIC for Google Login
+        // 🔥 RECOVERY LOGIC for Google Login - Optimized
         try {
-            const user = await User.findById(req.user._id);
+            const user = req.user;
             if (user && (user.status === "pending_delete" || user.isDeleted === true)) {
-                user.status = "active";
-                user.isDeleted = false;
-                user.deletedAt = null;
-                user.deleteAfter = null;
-                await user.save();
-                invalidateCachedUser(user._id);
-                req.flash("success", "Your account has been restored successfully 🎉");
+                const freshUser = await User.findById(user._id);
+                if (freshUser) {
+                    freshUser.status = "active";
+                    freshUser.isDeleted = false;
+                    freshUser.deletedAt = null;
+                    freshUser.deleteAfter = null;
+                    await freshUser.save();
+                    invalidateCachedUser(user._id);
+                    req.flash("success", "Your account has been restored successfully 🎉");
+                }
             }
         } catch (err) {
             console.error("[google-recovery] Error restoring account:", err);

@@ -187,7 +187,7 @@ module.exports.createride = async (req, res) => {
         // ⚡ OPTIMIZATION: Immediate Haversine approximation for initial save
         // This avoids waiting for Mapbox API in the critical path.
         const estDistanceMeters = haversineMeters(
-            sourceCoordinates[1], sourceCoordinates[0], 
+            sourceCoordinates[1], sourceCoordinates[0],
             destinationCoordinates[1], destinationCoordinates[0]
         );
         const estDistanceKm = Math.round((estDistanceMeters / 1000) * 100) / 100;
@@ -216,10 +216,10 @@ module.exports.createride = async (req, res) => {
         console.timeEnd("createRide_DBSave");
 
         req.flash("success", "ride created...!");
-        
+
         // 🚀 FAST RESPONSE: Redirect user immediately
         res.redirect(`/ridesynk/rideroom/${data._id.toString()}`);
-        
+
         // 🧵 BACKGROUND: Refine distance with Mapbox in the background
         setImmediate(async () => {
             try {
@@ -229,7 +229,7 @@ module.exports.createride = async (req, res) => {
                     sourceAddress: ride.sorce,
                     destinationAddress: ride.destination
                 });
-                
+
                 if (preciseDistanceKm > 0) {
                     await Ride.findByIdAndUpdate(data._id, { distance: preciseDistanceKm });
                     // console.log(`[perf] Background distance update for ride ${data._id}: ${preciseDistanceKm}km`);

@@ -16,18 +16,21 @@ module.exports.login = async (req, res) => {
         return res.redirect("/ridesynk/entry/signup");
     }
 
-    // 🔥 RECOVERY LOGIC - Robust restore using .save()
+    // 🔥 RECOVERY LOGIC - Only fetch if user was recently deleted or pending delete
     try {
-        const freshUser = await User.findById(user._id);
-        if (freshUser && (freshUser.status === "pending_delete" || freshUser.isDeleted === true)) {
-            freshUser.status = "active";
-            freshUser.isDeleted = false;
-            freshUser.deletedAt = null;
-            freshUser.deleteAfter = null;
-            await freshUser.save();
-            
-            invalidateCachedUser(user._id);
-            req.flash("success", "Your account has been restored successfully 🎉");
+        // Optimized: req.user already contains status if deserialized correctly
+        if (user && (user.status === "pending_delete" || user.isDeleted === true)) {
+            const freshUser = await User.findById(user._id);
+            if (freshUser) {
+                freshUser.status = "active";
+                freshUser.isDeleted = false;
+                freshUser.deletedAt = null;
+                freshUser.deleteAfter = null;
+                await freshUser.save();
+                
+                invalidateCachedUser(user._id);
+                req.flash("success", "Your account has been restored successfully 🎉");
+            }
         } else {
             req.flash("success", "You logged in successfully");
         }
@@ -135,12 +138,24 @@ module.exports.conpleteprofileform = async (req, res, next) => {
 }
 
 module.exports.completeprofile = async (req, res) => {
-    const { data } = req.body;
-    const t = await User.findByIdAndUpdate(req.user._id, { ...data }, { runValidators: true });
-    invalidateCachedUser(req.user._id);
-    req.flash("success", "your profile save successfully...")
-    // FIX: added return
-    return res.redirect("/ridesynk/home");
+    try {
+        const { data } = req.body;
+        await User.findByIdAndUpdate(req.user._id, { ...data }, { runValidators: true });
+        invalidateCachedUser(req.user._id);
+        req.flash("success", "your profile save successfully...");
+        return res.redirect("/ridesynk/home");
+    } catch (err) {
+        if (err.code === 11000) {
+            const field = Object.keys(err.keyPattern || {})[0] || "field";
+            req.flash("error", `This ${field} is already registered with another account.`);
+        } else if (err.name === "ValidationError") {
+            const message = Object.values(err.errors).map(val => val.message).join(", ");
+            req.flash("error", message);
+        } else {
+            req.flash("error", "Something went wrong while updating your profile.");
+        }
+        return res.redirect("/ridesynk/entry/complete-profile");
+    }
 }
 
 module.exports.skipprofile = (req, res) => {
