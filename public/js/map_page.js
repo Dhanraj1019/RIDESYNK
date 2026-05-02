@@ -73,7 +73,7 @@ let followMode = true;
 let followTarget = isAdmin ? userid : adminUserId;
 let watchId = null;
 let lastEmitTime = 0;
-const EMIT_THROTTLE = 3000;
+const EMIT_THROTTLE = 2000;
 
 // Tracks latest confirmed location per user (for members panel distances)
 const memberLocations = new Map();  // userId → { lat, lng, updatedAt }
@@ -951,7 +951,14 @@ function animateMarker(userId, targetLat, targetLng) {
 /* ── CAMERA FOLLOW ──────────────────────────────────────────────────── */
 function centerOnUser(lat, lng) {
   if (!followMode) return;
-  map.easeTo({ center: [lng, lat], zoom: 15, pitch: 45, duration: 500 });
+  const currentZoom = map.getZoom();
+  map.easeTo({
+    center: [lng, lat],
+    zoom: currentZoom,
+    pitch: 45,
+    duration: 1000,
+    essential: true
+  });
 }
 
 map.on("dragstart", () => {
@@ -1070,7 +1077,7 @@ function scheduleRouteRedraw(lat, lng) {
 
   if (lastRouteOrigin) {
     const movedDistance = haversine(lat, lng, lastRouteOrigin.lat, lastRouteOrigin.lng);
-    if (movedDistance < 50) return;
+    if (movedDistance < 30) return;
   } else if (routeRedrawTimer) {
     return;
   }
@@ -1079,7 +1086,7 @@ function scheduleRouteRedraw(lat, lng) {
   routeRedrawTimer = setTimeout(() => {
     routeRedrawTimer = null;
     updateDynamicRoute(lat, lng);
-  }, 5000);
+  }, 3000);
 }
 
 function shouldUpdateRoute(lat, lng) {
@@ -1097,7 +1104,7 @@ function shouldUpdateRoute(lat, lng) {
       lastDynamicRouteUpdateLocation.lat,
       lastDynamicRouteUpdateLocation.lng
     );
-    if (movedDistance < 20) return false;
+    if (movedDistance < 25) return false;
   }
 
   lastDynamicRouteUpdateTime = now;
@@ -1160,8 +1167,8 @@ async function updateDynamicRoute(adminLocationOrLat, adminLng) {
   const wpParam = "&waypoints=0;1;2";
 
   const url =
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}` +
-    `?overview=full&geometries=geojson&steps=true${wpParam}&access_token=${map_token}`;
+    `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${coordsString}` +
+    `?overview=full&geometries=geojson&steps=true&continue_straight=true${wpParam}&access_token=${map_token}`;
 
   try {
     const res = await fetch(url);
