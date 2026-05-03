@@ -23,12 +23,12 @@ const inviteSchema = new mongoose.Schema({
         type: Date,
         required: true,
         index: true
-    },
-    isUsed: {
-        type: Boolean,
-        default: false,
-        index: true
     }
+    // isUsed: {
+    //     type: Boolean,
+    //     default: false,
+    //     index: true
+    // }
 }, {
     timestamps: true
 });

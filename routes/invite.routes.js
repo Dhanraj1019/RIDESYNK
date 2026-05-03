@@ -9,3 +9,4 @@ router.post("/api/invite/accept/:inviteId", isAuthenticated, inviteController.ac
 router.post("/api/invite/decline/:inviteId", isAuthenticated, inviteController.declineInvite);
 
 module.exports = router;
+ 

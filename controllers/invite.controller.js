@@ -11,9 +11,9 @@ function getInviteValidation(invite) {
         return { ok: false, code: 404, message: "Invite not found" };
     }
 
-    if (invite.isUsed) {
-        return { ok: false, code: 410, message: "Invite already used" };
-    }
+    // if (invite.isUsed) {
+    //     return { ok: false, code: 410, message: "Invite already used" };
+    // }
 
     if (invite.expiresAt.getTime() <= Date.now()) {
         return { ok: false, code: 410, message: "Invite expired" };
@@ -43,10 +43,10 @@ module.exports.createInvite = async (req, res) => {
             return res.status(404).json({ success: false, message: "Ride not found" });
         }
 
-        const isAdmin = String(ride.adminId) === String(req.user._id);
-        if (!isAdmin) {
-            return res.status(403).json({ success: false, message: "Only ride admin can share invite" });
-        }
+        // const isAdmin = String(ride.adminId) === String(req.user._id);
+        // if (!isAdmin) {
+        //     return res.status(403).json({ success: false, message: "Only ride admin can share invite" });
+        // }
 
         const inviteId = uuidv4();
         const expiresAt = new Date(Date.now() + INVITE_EXPIRY_MINUTES * 60 * 1000);
@@ -56,7 +56,7 @@ module.exports.createInvite = async (req, res) => {
             createdBy: req.user._id,
             inviteId,
             expiresAt,
-            isUsed: false
+            // isUsed: false
         });
 
         const inviteLink = `${req.protocol}://${req.get("host")}/invite/${invite.inviteId}`;
@@ -176,7 +176,7 @@ module.exports.acceptInvite = async (req, res) => {
             await Ride.findByIdAndUpdate(ride._id, { $inc: { totalMembers: 1 } });
         }
 
-        invite.isUsed = true;
+        // invite.isUsed = true;
         await invite.save();
 
         req.flash("success", "You joined the ride successfully");
@@ -205,12 +205,12 @@ module.exports.declineInvite = async (req, res) => {
             return res.redirect("/ridesynk/entry/login");
         }
 
-        const { inviteId } = req.params;
-        const invite = await Invite.findOne({ inviteId });
-        if (invite && !invite.isUsed && invite.expiresAt.getTime() > Date.now()) {
-            invite.isUsed = true;
-            await invite.save();
-        }
+        // const { inviteId } = req.params;
+        // const invite = await Invite.findOne({ inviteId });
+        // if (invite && !invite.isUsed && invite.expiresAt.getTime() > Date.now()) {
+        //     invite.isUsed = true;
+        //     await invite.save();
+        // }
 
         req.flash("success", "Invite declined");
         return res.redirect("/ridesynk/home");

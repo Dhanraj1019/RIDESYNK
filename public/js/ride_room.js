@@ -401,7 +401,7 @@ async function fetchSuggestions(query) {
     + `&language=en`
     + `&country=IN`;          // remove or change for other countries
   try {
-    const res  = await fetch(url);
+    const res = await fetch(url);
     const data = await res.json();
     return data.features || [];
   } catch (e) {
@@ -444,10 +444,10 @@ function renderSuggestions(features, ul, onSelect) {
   }
 
   features.forEach(f => {
-    const parts   = f.place_name.split(',');
-    const name    = parts[0].trim();
+    const parts = f.place_name.split(',');
+    const name = parts[0].trim();
     const address = parts.slice(1).join(',').trim();
-    const coords  = f.geometry.coordinates; // [lng, lat]
+    const coords = f.geometry.coordinates; // [lng, lat]
 
     const li = document.createElement('li');
     li.style.cssText = `
@@ -544,9 +544,9 @@ function attachSearch(input, hiddenName = null) {
           coordinates: coords           // [lng, lat]  ← stored for backend
         });
       }
-      input.dataset.placeName  = name;
-      input.dataset.coordsLng  = coords[0];
-      input.dataset.coordsLat  = coords[1];
+      input.dataset.placeName = name;
+      input.dataset.coordsLng = coords[0];
+      input.dataset.coordsLat = coords[1];
       input.dispatchEvent(new Event('placeselected', { bubbles: true }));
     });
   }, 300);
@@ -591,9 +591,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ── Add Stop button ── */
   const stopsContainer = document.getElementById('stops-container');
-  const addStopBtn     = document.getElementById('add-stop-btn');
-  let   stopCount      = 0;
-  const MAX_STOPS      = 3;
+  const addStopBtn = document.getElementById('add-stop-btn');
+  let stopCount = 0;
+  const MAX_STOPS = 3;
 
   if (!stopsContainer || !addStopBtn) {
     return;
@@ -663,10 +663,10 @@ document.addEventListener("DOMContentLoaded", () => {
       container.innerHTML = '<div class="no-logs">Loading logs...</div>';
       const res = await fetch(`/sos/ride/${rideId}`);
       if (!res.ok) throw new Error("Failed to fetch logs");
-      
+
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Failed to fetch logs");
-      
+
       // Merge active and resolved logs and sort by newest first
       const activeLogs = data.active || [];
       const resolvedLogs = data.resolved || [];
@@ -737,7 +737,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   sosBtn.addEventListener("click", openLogsPanel);
   closeBtn.addEventListener("click", closeLogsPanel);
-  
+
   // Close if clicking outside the panel
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) {
